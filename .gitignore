@@ -1,0 +1,48 @@
+# === Dependencias y build (no se versionan) ===
+node_modules/
+dist/
+dist-ssr/
+storybook-static/
+*.local
+
+# === Docker (solo se usa en local para probar; NO se sube) ===
+Dockerfile
+.dockerignore
+docker-compose*.yml
+docker-compose*.yaml
+nginx.conf
+
+# === Scripts de pruebas ad-hoc (no esenciales para el repo) ===
+e2e-*.cjs
+
+# === Variables de entorno / secretos (nunca subir) ===
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*credentials*
+*secret*
+
+# === Cachés y artefactos de herramientas ===
+.vite/
+.eslintcache
+*.tsbuildinfo
+coverage/
+.cache/
+.turbo/
+
+# === Logs ===
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# === Editores / SO ===
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
