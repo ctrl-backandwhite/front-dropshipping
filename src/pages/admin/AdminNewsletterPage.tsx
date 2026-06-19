@@ -5,6 +5,7 @@ import { faPaperPlane, faUsers, faEnvelopeOpenText } from '@fortawesome/free-sol
 import { admin } from '../../api/admin'
 import { useT } from '../../store/locale'
 import { dialog } from '../../store/dialog'
+import { sanitizeHtml } from '../../lib/sanitize'
 
 export default function AdminNewsletterPage() {
   const t = useT()
@@ -62,7 +63,7 @@ export default function AdminNewsletterPage() {
           <h2 className="font-medium text-sm mb-2">{t('admin.newsletter.preview')}</h2>
           <div className="border border-ink-100 rounded-box p-4 bg-base-200/40 min-h-[12rem]">
             <div className="font-semibold mb-2">{subject || t('admin.newsletter.subject_ph')}</div>
-            <div className="text-[13px] text-ink-700 prose-sm" dangerouslySetInnerHTML={{ __html: body || `<span class="text-ink-400">${t('admin.newsletter.content_ph')}</span>` }} />
+            <div className="text-[13px] text-ink-700 prose-sm" dangerouslySetInnerHTML={{ __html: body ? sanitizeHtml(body) : `<span class="text-ink-400">${t('admin.newsletter.content_ph')}</span>` }} />
           </div>
         </div>
       </section>

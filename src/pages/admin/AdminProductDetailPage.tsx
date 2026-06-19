@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { api } from '../../api/client'
 import { admin } from '../../api/admin'
+import { sanitizeHtml } from '../../lib/sanitize'
 import type { ProductDetail } from '../../api/catalog'
 import { adminUpdateStatus } from '../../api/catalog'
 import { useT, useLocaleStore } from '../../store/locale'
@@ -307,7 +308,7 @@ export default function AdminProductDetailPage() {
           ) : (
             <div className="space-y-4">
               {(data as any).descriptionHtml ? (
-                <div className="prose prose-sm max-w-none text-ink-700" dangerouslySetInnerHTML={{ __html: (data as any).descriptionHtml }} />
+                <div className="prose prose-sm max-w-none text-ink-700" dangerouslySetInnerHTML={{ __html: sanitizeHtml((data as any).descriptionHtml) }} />
               ) : (data as any).description ? (
                 <p className="text-ink-700 whitespace-pre-wrap text-[13px]">{(data as any).description}</p>
               ) : (

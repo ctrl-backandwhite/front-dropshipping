@@ -8,6 +8,7 @@ import { useCartStore } from '../../store/cart'
 import { useCurrencyStore } from '../../store/currency'
 import { useAuthStore } from '../../store/auth'
 import { flyToCart } from '../../lib/flyToCart'
+import { sanitizeHtml } from '../../lib/sanitize'
 import { useT } from '../../store/locale'
 import { toast } from '../../store/toast'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -532,7 +533,7 @@ export default function ProductDetailPage() {
             <div className="card-body">
               <h2 className="card-title">{tt(t, 'pdp.section.details', 'Product details')}</h2>
               {product.description ? (
-                <div className="prose prose-sm max-w-none mt-2" dangerouslySetInnerHTML={{ __html: product.description }} />
+                <div className="prose prose-sm max-w-none mt-2" dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }} />
               ) : (
                 <p className="opacity-70 text-sm mt-2">{tt(t, 'pdp.details.empty', 'No additional description provided by the supplier.')}</p>
               )}
