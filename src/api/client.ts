@@ -44,7 +44,20 @@ api.interceptors.request.use((cfg) => {
 })
 
 api.interceptors.response.use(
-  (r) => r,
+  (r) => {
+    // En el despliegue remoto, si el backend no está accesible nginx puede responder
+    // con el index.html del SPA (200 text/html) o una página de error HTML. Sin esto,
+    // un componente que espera JSON recibiría un string HTML (truthy) y reventaría al
+    // hacer `data.campo` → ErrorBoundary global ("Algo salió mal"). Lo tratamos como
+    // error para que TanStack Query degrade a vacío y los guards (`?? []`, `if (!data)`)
+    // pinten un estado vacío limpio en lugar de tumbar la página.
+    const looksHtml =
+      typeof r.data === 'string' && /^\s*<(?:!doctype|html)\b/i.test(r.data)
+    if (looksHtml) {
+      return Promise.reject(new Error('API no disponible (respuesta no-JSON)'))
+    }
+    return r
+  },
   (err) => {
     if (err?.response?.status === 401 && !window.location.pathname.startsWith('/login')) {
       // Don't redirect for /api/me probes

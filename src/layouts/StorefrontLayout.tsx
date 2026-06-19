@@ -12,6 +12,7 @@ import { useT } from '../store/locale'
 import { CurrencyLanguagePicker } from '../components/CurrencyLanguagePicker'
 import { SiteFooter } from '../components/SiteFooter'
 import { Breadcrumbs } from '../components/Breadcrumbs'
+import { SectionBoundary, ContentUnavailable } from '../components/ErrorBoundary'
 import { ThemeSwitcher } from '../components/ThemeSwitcher'
 import { PageTransition, useScrollShadow } from '../components/Motion'
 
@@ -193,7 +194,12 @@ export default function StorefrontLayout() {
       <main className="flex-1 max-w-screen-2xl w-full mx-auto px-4 lg:px-6 py-6 lg:py-10">
         {/* DROP-267: skip auto-breadcrumb on PDP routes — pages render their own with the product title. */}
         {location.pathname !== '/' && !/^\/(catalog|admin\/browse)\/[^/]+$/.test(location.pathname) && <Breadcrumbs />}
-        <PageTransition><Outlet /></PageTransition>
+        {/* Contención por página: si el contenido de la ruta revienta (API caída en remoto),
+            el chrome del sitio (nav/footer) se mantiene y mostramos un estado vacío limpio
+            en vez de la pantalla de error. `key` por ruta para resetear al navegar. */}
+        <SectionBoundary key={location.pathname} fallback={<ContentUnavailable />}>
+          <PageTransition><Outlet /></PageTransition>
+        </SectionBoundary>
       </main>
 
       <SiteFooter />

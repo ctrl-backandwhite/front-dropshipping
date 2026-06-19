@@ -1,9 +1,31 @@
 import { Component, ReactNode } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faTriangleExclamation, faRotate, faHouse } from '@fortawesome/free-solid-svg-icons'
+import { faTriangleExclamation, faRotate, faHouse, faCloudArrowDown } from '@fortawesome/free-solid-svg-icons'
 
 interface Props { children: ReactNode }
 interface State { error: Error | null; info: string | null }
+
+/**
+ * Fallback de PÁGINA limpio y on-brand (no alarmante). Se usa cuando el contenido
+ * de una ruta no se puede pintar (p.ej. la API no responde en el despliegue remoto):
+ * en vez de la pantalla roja "Algo salió mal", mantenemos el chrome del sitio
+ * (nav/footer) y mostramos un estado vacío estético con opción de reintentar.
+ */
+export function ContentUnavailable() {
+  return (
+    <div className="min-h-[40vh] flex flex-col items-center justify-center text-center gap-3 py-16">
+      <span className="inline-flex w-14 h-14 items-center justify-center rounded-full bg-base-200 text-ink-400">
+        <FontAwesomeIcon icon={faCloudArrowDown} className="text-xl" />
+      </span>
+      <p className="text-ink-500 max-w-sm text-sm">
+        Estamos preparando el contenido. Vuelve a intentarlo en unos segundos.
+      </p>
+      <button onClick={() => window.location.reload()} className="btn btn-sm btn-outline">
+        <FontAwesomeIcon icon={faRotate} /> Reintentar
+      </button>
+    </div>
+  )
+}
 
 /**
  * Boundary inline para envolver secciones (charts lazy, carruseles, etc.).

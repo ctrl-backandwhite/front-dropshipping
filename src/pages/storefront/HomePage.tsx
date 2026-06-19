@@ -6,6 +6,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { HomeSections } from '../../components/HomeSections'
 import { ShippingCountriesBanner } from '../../components/ShippingCountriesBanner'
+import { SectionBoundary } from '../../components/ErrorBoundary'
 import { useT } from '../../store/locale'
 import { Reveal } from '../../components/Motion'
 import { useQuery } from '@tanstack/react-query'
@@ -96,8 +97,9 @@ export default function HomePage() {
         </div>
       </section></Reveal>
 
-      {/* Curated catalog (existing component) */}
-      <HomeSections />
+      {/* Curated catalog (existing component) — si la API no responde, la sección
+          desaparece limpiamente (fallback={null}) y el resto de la home se ve bien. */}
+      <SectionBoundary fallback={null}><HomeSections /></SectionBoundary>
 
       {/* Final CTA */}
       <section className="hero bg-primary text-primary-content rounded-2xl">
@@ -118,7 +120,7 @@ export default function HomePage() {
       </section>
 
       {/* DROP-637: banner giratorio con los países a los que enviamos (cobertura real de Cainiao). */}
-      <ShippingCountriesBanner />
+      <SectionBoundary fallback={null}><ShippingCountriesBanner /></SectionBoundary>
     </div>
   )
 }

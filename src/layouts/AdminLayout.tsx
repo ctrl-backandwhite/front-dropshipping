@@ -16,6 +16,7 @@ import { useT } from '../store/locale'
 import { CurrencyLanguagePicker } from '../components/CurrencyLanguagePicker'
 import { ThemeSwitcher } from '../components/ThemeSwitcher'
 import { PageTransition, useScrollShadow } from '../components/Motion'
+import { SectionBoundary, ContentUnavailable } from '../components/ErrorBoundary'
 import { AdminGlobalSearch } from '../components/AdminGlobalSearch'
 import { NotificationsDropdown } from '../components/NotificationsDropdown'
 
@@ -241,7 +242,10 @@ export default function AdminLayout() {
           </div>
         </div>
         <div className="p-4 sm:p-6 lg:p-8 w-full">
-          <PageTransition><Outlet /></PageTransition>
+          {/* Contención por página: un fallo de render (API caída) no tumba el panel. */}
+          <SectionBoundary key={location.pathname} fallback={<ContentUnavailable />}>
+            <PageTransition><Outlet /></PageTransition>
+          </SectionBoundary>
         </div>
       </main>
     </div>
