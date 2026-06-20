@@ -6,7 +6,7 @@ import { api } from '../../api/client'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faKey, faCircleCheck, faPen, faShieldHalved, faMobileScreen, faLaptop,
-  faRightFromBracket, faUserPen, faUpload, faQrcode, faCopy,
+  faRightFromBracket, faUserPen, faQrcode, faCopy,
 } from '@fortawesome/free-solid-svg-icons'
 import { dialog } from '../../store/dialog'
 import { useT, useLocaleStore } from '../../store/locale'
@@ -170,9 +170,8 @@ export default function AdminProfilePage() {
 
       <div className="card p-6">
         <div className="flex items-start gap-4">
-          {/* DROP-583: upload real de avatar (multipart al backend). El input
-              file está oculto; el botón visible dispara su click. Aceptamos
-              jpg/png/webp ≤ 2 MB — el backend rechaza el resto. */}
+          {/* El avatar puede provenir de Google (avatarUrl); ya no hay subida
+              de archivo: las imágenes se manejan solo por URL. */}
           <div className="relative">
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt="avatar"
@@ -182,28 +181,6 @@ export default function AdminProfilePage() {
                 {initials(user?.displayName ?? user?.email).toUpperCase()}
               </div>
             )}
-            <input type="file" id="avatar-input" accept="image/jpeg,image/png,image/webp"
-                   className="hidden"
-                   onChange={async (e) => {
-                     const f = e.target.files?.[0]
-                     e.target.value = ''
-                     if (!f) return
-                     if (f.size > 2 * 1024 * 1024) {
-                       dialog.alert(t('admin.profile.avatar_too_large') ?? 'Avatar exceeds 2 MB')
-                       return
-                     }
-                     try {
-                       const updated = await profile.uploadAvatar(f)
-                       if (typeof setUser === 'function') setUser(updated as any)
-                     } catch (err: any) {
-                       dialog.alert(err?.response?.data?.message ?? 'Avatar upload failed')
-                     }
-                   }} />
-            <button type="button" title={t('admin.profile.upload_avatar')}
-                    onClick={() => document.getElementById('avatar-input')?.click()}
-                    className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white border border-ink-200 text-ink-600 hover:bg-ink-50 flex items-center justify-center">
-              <FontAwesomeIcon icon={faUpload} className="text-[11px]" />
-            </button>
           </div>
           <div className="flex-1">
             <div className="font-medium text-lg">{user?.displayName ?? user?.email}</div>

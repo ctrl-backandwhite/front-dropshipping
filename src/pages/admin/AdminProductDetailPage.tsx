@@ -11,7 +11,7 @@ import { useCurrencyStore } from '../../store/currency'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faArrowLeft, faPen, faPause, faPlay, faCopy, faBoxArchive,
-  faMagnifyingGlassPlus, faImage, faTrash, faUpload, faPlus, faSpinner,
+  faMagnifyingGlassPlus, faImage, faTrash, faPlus, faSpinner,
 } from '@fortawesome/free-solid-svg-icons'
 import { dialog } from '../../store/dialog'
 import { VariantsManager } from '../../components/VariantsManager'
@@ -80,9 +80,8 @@ export default function AdminProductDetailPage() {
     updVariantMut.mutate({ vid, price: n })
     setVPrice((s) => { const x = { ...s }; delete x[vid]; return x })
   }
-  // Product images: add by URL or upload, and remove.
+  // Product images: add by URL and remove.
   const [newImgUrl, setNewImgUrl] = useState('')
-  const [imgUploading, setImgUploading] = useState(false)
   const addImgMut = useMutation({
     mutationFn: (url: string) => admin.addProductImage(id, url),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-product', id] }); setNewImgUrl('') },
@@ -93,18 +92,6 @@ export default function AdminProductDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-product', id] }),
     onError: (e: any) => dialog.alert({ variant: 'error', message: e?.response?.data?.message ?? t('admin.catalog.images.error') }),
   })
-  async function uploadProductImage(file: File) {
-    setImgUploading(true)
-    try {
-      const { url } = await admin.uploadImage(file)
-      addImgMut.mutate(url)
-    } catch (e: any) {
-      dialog.alert({ variant: 'error', message: e?.response?.data?.message ?? t('admin.catalog.images.error') })
-    } finally {
-      setImgUploading(false)
-    }
-  }
-
   // DROP-688: edición manual del SEO (meta título/descripción) del idioma del detalle.
   const [seoForm, setSeoForm] = useState({ metaTitle: '', metaDescription: '' })
   useEffect(() => {
@@ -271,7 +258,7 @@ export default function AdminProductDetailPage() {
                 <span className="text-[12px]">{t('admin.catalog.detail.gallery_empty')}</span>
               </div>
             )}
-            {/* Add image: paste a URL or upload a file */}
+            {/* Add image: paste a URL */}
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-ink-100">
               <input value={newImgUrl} onChange={(e) => setNewImgUrl(e.target.value)}
                      placeholder={t('admin.catalog.images.url_ph')}
@@ -281,11 +268,6 @@ export default function AdminProductDetailPage() {
                       className="btn btn-outline btn-sm text-[12px]">
                 <FontAwesomeIcon icon={faPlus} /> {t('admin.catalog.images.add_url')}
               </button>
-              <label className="btn btn-outline btn-sm text-[12px] cursor-pointer">
-                <FontAwesomeIcon icon={imgUploading ? faSpinner : faUpload} className={imgUploading ? 'fa-spin' : ''} /> {t('admin.catalog.images.upload')}
-                <input type="file" accept="image/*" className="hidden"
-                       onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProductImage(f); e.currentTarget.value = '' }} />
-              </label>
             </div>
           </div>
         </div>

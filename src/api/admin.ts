@@ -317,13 +317,7 @@ export const admin = {
   resolveAffiliateReview: (commissionId: string, approve: boolean) =>
                       api.post(`/admin/affiliates/commissions/${commissionId}/review`, null, { params: { approve } }).then((r) => r.status),
 
-  // Image upload (URL or file) for products and variants.
-  uploadImage:    (file: File) => {
-                    const fd = new FormData()
-                    fd.append('file', file)
-                    return api.post<{ url: string }>('/admin/catalog/images/upload', fd,
-                      { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data)
-                  },
+  // Product images are managed by URL only.
   addProductImage:(productId: string, url: string, role?: string) =>
                     api.post(`/admin/catalog/products/${productId}/images`, { url, role }).then((r) => r.data),
   deleteProductImage: (imageId: string) =>

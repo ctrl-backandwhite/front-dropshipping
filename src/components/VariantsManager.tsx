@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPlus, faPen, faTrash, faCheck, faXmark, faUpload, faSpinner, faImage, faPenToSquare } from '@fortawesome/free-solid-svg-icons'
+import { faPlus, faPen, faTrash, faCheck, faXmark, faSpinner, faImage, faPenToSquare } from '@fortawesome/free-solid-svg-icons'
 import { admin } from '../api/admin'
 import { dialog } from '../store/dialog'
 import { useT } from '../store/locale'
@@ -56,31 +56,10 @@ export function VariantsManager({ productId }: { productId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState<Draft>(EMPTY)
-  const [uploading, setUploading] = useState(false)
-  // Edición MASIVA: todas las variantes editables a la vez (drafts por id) + subida por fila.
+  // Edición MASIVA: todas las variantes editables a la vez (drafts por id).
   const [bulk, setBulk] = useState(false)
   const [bulkDrafts, setBulkDrafts] = useState<Record<string, Draft>>({})
-  const [bulkUploadId, setBulkUploadId] = useState<string | null>(null)
   const [bulkSaving, setBulkSaving] = useState(false)
-
-  async function uploadFor(file: File) {
-    setUploading(true)
-    try {
-      const { url } = await admin.uploadImage(file)
-      setDraft((d) => ({ ...d, imageUrl: url }))
-    } catch (e: any) {
-      dialog.alert({ variant: 'error', message: e?.response?.data?.message ?? t('admin.variants.error') })
-    } finally { setUploading(false) }
-  }
-  async function uploadForBulk(id: string, file: File) {
-    setBulkUploadId(id)
-    try {
-      const { url } = await admin.uploadImage(file)
-      setBulkDrafts((m) => ({ ...m, [id]: { ...m[id], imageUrl: url } }))
-    } catch (e: any) {
-      dialog.alert({ variant: 'error', message: e?.response?.data?.message ?? t('admin.variants.error') })
-    } finally { setBulkUploadId(null) }
-  }
 
   const { data: variants = [] } = useQuery<Variant[]>({
     queryKey: ['admin-variants', productId],
@@ -140,8 +119,8 @@ export function VariantsManager({ productId }: { productId: string }) {
   const cell = 'px-3 py-2'
   const inputCls = 'input input-bordered input-xs w-full'
 
-  /** Celdas editables (imagen, sku, título, precio, stock, opciones) reutilizadas en edición simple y masiva. */
-  const inputCells = (d: Draft, upd: (patch: Partial<Draft>) => void, onUpload: (f: File) => void, uploadingThis: boolean) => (
+  /** Celdas editables (imagen por URL, sku, título, precio, stock, opciones) reutilizadas en edición simple y masiva. */
+  const inputCells = (d: Draft, upd: (patch: Partial<Draft>) => void) => (
     <>
       <td className={cell}>
         <div className="flex items-center gap-1">
@@ -149,10 +128,6 @@ export function VariantsManager({ productId }: { productId: string }) {
             ? <img src={d.imageUrl} alt="" className="w-8 h-8 rounded object-cover border border-ink-200 shrink-0" />
             : <span className="w-8 h-8 rounded border border-dashed border-ink-200 grid place-items-center text-ink-300 shrink-0"><FontAwesomeIcon icon={faImage} className="text-[11px]" /></span>}
           <input className={inputCls} placeholder={t('admin.variants.image_ph')} value={d.imageUrl} onChange={(e) => upd({ imageUrl: e.target.value })} />
-          <label className="btn btn-ghost btn-xs btn-square cursor-pointer shrink-0" title={t('admin.variants.upload')}>
-            <FontAwesomeIcon icon={uploadingThis ? faSpinner : faUpload} className={uploadingThis ? 'fa-spin' : ''} />
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.currentTarget.value = '' }} />
-          </label>
         </div>
       </td>
       <td className={cell}><input className={inputCls} placeholder="SKU" value={d.sku} onChange={(e) => upd({ sku: e.target.value })} /></td>
@@ -166,7 +141,7 @@ export function VariantsManager({ productId }: { productId: string }) {
   // DROP-621: render as a plain function call (no <DraftRow/>) so inputs keep focus across re-renders.
   const renderDraftRow = ({ onSave, onCancel, saving, rowKey }: { onSave: () => void; onCancel: () => void; saving: boolean; rowKey?: string }) => (
     <tr key={rowKey} className="border-t border-ink-100 bg-base-200/40">
-      {inputCells(draft, (p) => setDraft({ ...draft, ...p }), uploadFor, uploading)}
+      {inputCells(draft, (p) => setDraft({ ...draft, ...p }))}
       <td className={cell + ' text-right whitespace-nowrap'}>
         <button onClick={onSave} disabled={saving || !draft.sku.trim()} className="btn btn-success btn-xs btn-square mr-1"><FontAwesomeIcon icon={faCheck} /></button>
         <button onClick={onCancel} className="btn btn-ghost btn-xs btn-square"><FontAwesomeIcon icon={faXmark} /></button>
@@ -211,7 +186,7 @@ export function VariantsManager({ productId }: { productId: string }) {
           {adding && !bulk && renderDraftRow({ onSave: () => createMut.mutate(toBody(draft)), onCancel: () => setAdding(false), saving: createMut.isPending })}
           {variants.map((v) => bulk ? (
             <tr key={v.id} className="border-t border-ink-100 bg-base-200/30">
-              {inputCells(bulkDrafts[v.id] ?? draftOf(v), (p) => patchBulk(v.id, p), (f) => uploadForBulk(v.id, f), bulkUploadId === v.id)}
+              {inputCells(bulkDrafts[v.id] ?? draftOf(v), (p) => patchBulk(v.id, p))}
               <td className={cell + ' text-right text-ink-300 text-[11px] font-mono'}>{v.sku ?? ''}</td>
             </tr>
           ) : editingId === v.id ? (
