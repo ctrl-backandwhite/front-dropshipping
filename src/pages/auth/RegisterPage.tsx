@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCircleNodes, faUserPlus, faShield, faBolt, faGlobe } from '@fortawesome/free-solid-svg-icons'
+import { faCircleNodes, faUserPlus, faShield, faBolt, faGlobe, faArrowLeft } from '@fortawesome/free-solid-svg-icons'
 import { useAuthStore } from '../../store/auth'
 import { useT, useLocaleStore, LOCALE_OPTIONS } from '../../store/locale'
 
@@ -116,6 +116,11 @@ export default function RegisterPage() {
           NX036 Dropshipping
         </Link>
         <div className="card-body">
+          {/* DROP: enlace claro a la home — página standalone sin header de tienda. */}
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline mb-1 self-start">
+            <FontAwesomeIcon icon={faArrowLeft} className="text-[12px]" />
+            Volver a la tienda
+          </Link>
           <h1 className="text-2xl font-semibold">{t('register.title')}</h1>
           <p className="text-sm opacity-70 mt-1">{t('register.subtitle')}</p>
 

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { getProduct, getProductAttributes, getProductSpecifications, listStorefrontProducts, listReviews, createReview } from '../../api/catalog'
 import { useLocaleStore } from '../../store/locale'
@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCartPlus, faBolt, faCircleCheck, faTruck, faRotateLeft, faGlobe, faCircleInfo,
   faIndustry, faStar, faShieldHalved, faMinus, faPlus, faShop, faChevronLeft, faChevronRight,
-  faPlay, faCircleExclamation,
+  faPlay, faCircleExclamation, faArrowLeft,
 } from '@fortawesome/free-solid-svg-icons'
 import { Breadcrumbs } from '../../components/Breadcrumbs'
 import { Reveal } from '../../components/Motion'
@@ -379,11 +379,21 @@ export default function ProductDetailPage() {
 
   return (
     <>
-      <Breadcrumbs items={[
-        // DROP-364: breadcrumb del PDP incluye categoría + título.
-        { label: tt(t, 'breadcrumb.catalog', 'Catalog'), to: '/catalog' },
-        { label: product.title },
-      ]} />
+      {/* DROP: en MÓVIL los breadcrumbs quedan poco visibles; mostramos un control "Volver
+          al catálogo" claro y táctil. En sm+ se ocultan y mandan los breadcrumbs de siempre. */}
+      <Link to="/catalog"
+            className="sm:hidden inline-flex items-center gap-2 mb-3 text-sm font-medium text-primary hover:underline">
+        <FontAwesomeIcon icon={faArrowLeft} className="text-[12px]" />
+        {tt(t, 'common.back_to_catalog', 'Back to catalog')}
+      </Link>
+
+      <div className="hidden sm:block">
+        <Breadcrumbs items={[
+          // DROP-364: breadcrumb del PDP incluye categoría + título.
+          { label: tt(t, 'breadcrumb.catalog', 'Catalog'), to: '/catalog' },
+          { label: product.title },
+        ]} />
+      </div>
 
       {/* =================== HEADER PDP (1688 layout) =================== */}
       <section className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-6 lg:gap-10 items-start animate-fade-up">
