@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faRotate, faFileImport, faXmark, faSpinner, faCircleInfo, faTriangleExclamation, faWandMagicSparkles, faCopy, faCircleCheck } from '@fortawesome/free-solid-svg-icons'
+import { faRotate, faFileImport, faXmark, faSpinner, faCircleInfo, faTriangleExclamation, faWandMagicSparkles, faCopy, faCircleCheck, faPaperclip } from '@fortawesome/free-solid-svg-icons'
 import { admin } from '../api/admin'
 import { dialog } from '../store/dialog'
 import { useT } from '../store/locale'
@@ -213,6 +213,12 @@ export function CatalogBulkTools({ kind, onDone }: { kind: 'products' | 'categor
   // Expanded by default so every accepted property (and which are optional) is visible up-front.
   const [showFields, setShowFields] = useState(true)
   const [errors, setErrors] = useState<string[]>([])
+  // Importación por ARCHIVO adjunto (para volúmenes grandes que no caben/no se pegan bien en el textarea).
+  // Si hay archivo, tiene prioridad sobre el textarea. Se procesa en lotes de BATCH_SIZE.
+  const [fileRows, setFileRows] = useState<any[] | null>(null)
+  const [fileName, setFileName] = useState('')
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const BATCH_SIZE = 100
 
   const schema = SCHEMAS[kind]
   const [copied, setCopied] = useState(false)
@@ -311,39 +317,89 @@ export function CatalogBulkTools({ kind, onDone }: { kind: 'products' | 'categor
       : { kind: 'valid' as const, count: v.length }
   }, [text])
 
+  /** Adjunta un archivo .json (array de filas). Se parsea una sola vez; el textarea queda ignorado. */
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    e.target.value = '' // permite re-seleccionar el mismo archivo
+    if (!f) return
+    setErrors([])
+    try {
+      const content = await f.text()
+      const v = JSON.parse(content)
+      if (!Array.isArray(v)) {
+        setFileRows(null); setFileName('')
+        setErrors(['El archivo debe ser un array JSON: [ … ].'])
+        return
+      }
+      setFileRows(v)
+      setFileName(f.name)
+    } catch (err: any) {
+      setFileRows(null); setFileName('')
+      setErrors(['Archivo JSON inválido: ' + String(err?.message ?? err)])
+    }
+  }
+
+  function clearFile() {
+    setFileRows(null); setFileName(''); setErrors([])
+  }
+
   async function submit() {
     setErrors([])
+    // Origen de las filas: el archivo adjunto tiene prioridad; si no, el textarea.
     let rows: any[]
-    try {
-      rows = JSON.parse(text)
-      if (!Array.isArray(rows)) throw new Error('not array')
-    } catch {
-      setErrors([t('admin.catalog.bulk.invalid_json')])
-      return
+    if (fileRows) {
+      rows = fileRows
+    } else {
+      try {
+        rows = JSON.parse(text)
+        if (!Array.isArray(rows)) throw new Error('not array')
+      } catch {
+        setErrors([t('admin.catalog.bulk.invalid_json')])
+        return
+      }
     }
     const problems = validate(rows)
     if (problems.length) {
       setErrors(problems)
       return
     }
+
+    // Inserción en LOTES de BATCH_SIZE (100). Un archivo de 10.000 filas → 100 lotes secuenciales.
     setBusy(true)
+    let created = 0
+    let failed = 0
+    const allErrors: string[] = []
+    setProgress({ done: 0, total: rows.length })
     try {
-      const res = kind === 'products' ? await admin.bulkProducts(rows) : await admin.bulkCategories(rows)
-      const msg = t('admin.catalog.bulk.result')
-        .replace('{ok}', String(res.created))
-        .replace('{fail}', String(res.failed))
-      if (res.failed > 0) {
-        setErrors(res.errors ?? [])
+      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+        const chunk = rows.slice(i, i + BATCH_SIZE)
+        const from = i + 1
+        const to = i + chunk.length
+        try {
+          const res = kind === 'products' ? await admin.bulkProducts(chunk) : await admin.bulkCategories(chunk)
+          created += res.created
+          failed += res.failed
+          if (res.errors?.length) allErrors.push(...res.errors.map((er) => `[${from}-${to}] ${er}`))
+        } catch (e: any) {
+          failed += chunk.length
+          allErrors.push(`Lote ${from}-${to}: ${e?.response?.data?.message ?? t('admin.catalog.bulk.error')}`)
+        }
+        setProgress({ done: to, total: rows.length })
+      }
+      const msg = t('admin.catalog.bulk.result').replace('{ok}', String(created)).replace('{fail}', String(failed))
+      if (failed > 0) {
+        setErrors(allErrors)
         dialog.alert({ variant: 'warning', message: msg })
       } else {
         dialog.alert({ variant: 'success', message: msg })
+        setOpen(false)
+        setFileRows(null)
+        setFileName('')
       }
       onDone?.()
-      if (res.created > 0 && res.failed === 0) setOpen(false)
-    } catch (e: any) {
-      setErrors([e?.response?.data?.message ?? t('admin.catalog.bulk.error')])
     } finally {
       setBusy(false)
+      setProgress(null)
     }
   }
 
@@ -354,7 +410,7 @@ export function CatalogBulkTools({ kind, onDone }: { kind: 'products' | 'categor
         <FontAwesomeIcon icon={reindexing ? faSpinner : faRotate} className={reindexing ? 'fa-spin' : ''} />
         {t('admin.catalog.reindex.btn')}
       </button>
-      <button onClick={() => { setText(EXAMPLES[kind]); setErrors([]); setShowFields(false); setOpen(true) }} className="btn btn-outline btn-sm text-[12px]">
+      <button onClick={() => { setText(EXAMPLES[kind]); setErrors([]); setShowFields(false); setFileRows(null); setFileName(''); setProgress(null); setOpen(true) }} className="btn btn-outline btn-sm text-[12px]">
         <FontAwesomeIcon icon={faFileImport} /> {t('admin.catalog.bulk.btn')}
       </button>
 
@@ -430,6 +486,10 @@ export function CatalogBulkTools({ kind, onDone }: { kind: 'products' | 'categor
                 {live.kind === 'invalid' && (<><FontAwesomeIcon icon={faTriangleExclamation} /> {live.count} fila(s), {live.problems.length} error(es) de validación</>)}
               </span>
               <div className="flex items-center gap-1">
+                <label className="btn btn-ghost btn-xs text-[12px] cursor-pointer">
+                  <FontAwesomeIcon icon={faPaperclip} /> Adjuntar JSON
+                  <input type="file" accept=".json,application/json" className="hidden" onChange={onFile} disabled={busy} />
+                </label>
                 <button type="button" onClick={() => { setText(EXAMPLES[kind]); setErrors([]) }}
                         className="btn btn-ghost btn-xs text-[12px]">
                   <FontAwesomeIcon icon={faWandMagicSparkles} /> {t('admin.catalog.bulk.example')}
@@ -450,8 +510,34 @@ export function CatalogBulkTools({ kind, onDone }: { kind: 'products' | 'categor
               </div>
             )}
 
+            {/* Archivo adjunto (prioridad sobre el textarea). Para volúmenes grandes (hasta ~10.000 filas). */}
+            {fileRows && (
+              <div className="mb-1 p-2 rounded-box bg-primary/10 border border-primary/30 text-[12px] flex items-center justify-between gap-2 shrink-0">
+                <span className="flex items-center gap-2 min-w-0">
+                  <FontAwesomeIcon icon={faPaperclip} className="text-primary" />
+                  <span className="truncate"><b>{fileName}</b> · {fileRows.length.toLocaleString()} fila(s) — se importará por lotes de {BATCH_SIZE}. El textarea se ignora.</span>
+                </span>
+                <button type="button" onClick={clearFile} disabled={busy} className="btn btn-ghost btn-xs shrink-0">
+                  <FontAwesomeIcon icon={faXmark} /> Quitar
+                </button>
+              </div>
+            )}
+
+            {/* Progreso de la importación por lotes. */}
+            {progress && (
+              <div className="mb-1 shrink-0">
+                <div className="flex items-center justify-between text-[12px] mb-0.5">
+                  <span className="flex items-center gap-1"><FontAwesomeIcon icon={faSpinner} className="fa-spin" /> Importando…</span>
+                  <span className="font-mono">{progress.done.toLocaleString()} / {progress.total.toLocaleString()}</span>
+                </div>
+                <progress className="progress progress-primary w-full" value={progress.done} max={progress.total} />
+              </div>
+            )}
+
             <textarea value={text} onChange={(e) => { setText(e.target.value); if (errors.length) setErrors([]) }} spellCheck={false}
-                      className="textarea textarea-bordered w-full font-mono text-[12px] flex-1 min-h-0 resize-none overflow-auto" />
+                      disabled={!!fileRows}
+                      placeholder={fileRows ? 'Usando el archivo adjunto…' : undefined}
+                      className={`textarea textarea-bordered w-full font-mono text-[12px] flex-1 min-h-0 resize-none overflow-auto ${fileRows ? 'opacity-40' : ''}`} />
 
             {/* Validation / server error feedback */}
             {errors.length > 0 && (
@@ -467,9 +553,12 @@ export function CatalogBulkTools({ kind, onDone }: { kind: 'products' | 'categor
             )}
 
             <div className="flex justify-end gap-2 mt-3 shrink-0">
-              <button onClick={() => setOpen(false)} className="btn btn-ghost btn-sm">{t('common.cancel')}</button>
-              <button onClick={submit} disabled={busy || !parsed.ok} className="btn btn-primary btn-sm">
+              <button onClick={() => setOpen(false)} disabled={busy} className="btn btn-ghost btn-sm">{t('common.cancel')}</button>
+              <button onClick={submit} disabled={busy || (!fileRows && !parsed.ok)} className="btn btn-primary btn-sm">
                 {busy && <FontAwesomeIcon icon={faSpinner} className="fa-spin" />} {t('admin.catalog.bulk.import')}
+                {(fileRows || parsed.ok) && !busy && (
+                  <span className="opacity-70">· {(fileRows?.length ?? parsed.count).toLocaleString()}</span>
+                )}
               </button>
             </div>
           </div>
