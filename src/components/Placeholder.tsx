@@ -30,7 +30,7 @@ export function SafeImage({ src, alt, className = '', fallbackClassName = '', ic
     )
   }
   return (
-    <img src={src} alt={alt} loading="lazy" className={className} onError={() => setBroken(true)} />
+    <img src={src} alt={alt} loading="lazy" referrerPolicy="no-referrer" className={className} onError={() => setBroken(true)} />
   )
 }
 

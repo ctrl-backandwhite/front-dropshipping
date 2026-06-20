@@ -5,6 +5,10 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#4f46e5" />
+    <!-- Las imágenes de producto vienen de CDNs (alicdn/1688) con protección hotlink por Referer:
+         responden 403 si el Referer es nuestro dominio. Con no-referrer el navegador no manda Referer
+         y las imágenes cargan (200). No afecta a la API (auth por token + CORS por Origin). -->
+    <meta name="referrer" content="no-referrer" />
     <!-- SEO permitido (index/follow) para que los clientes encuentren la tienda, pero se
          prohíbe el uso del contenido por IA/entrenamiento (noai/noimageai) a los crawlers que lo respetan. -->
     <meta name="robots" content="index, follow, noai, noimageai, noarchive, max-snippet:-1, max-image-preview:large" />
