@@ -610,11 +610,21 @@ function Gallery({ imgs, videoUrl, active, onActive, title, t }: {
   const next = () => onActive((active + 1) % Math.max(1, total))
   const current = imgs[active]
   const src = current?.cdnUrl || current?.sourceUrl
+  // DROP: swipe táctil en móvil — pasar imágenes deslizando como en cualquier app de ecommerce.
+  const touchX = useRef<number | null>(null)
+  const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.touches[0]?.clientX ?? null }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchX.current == null || total < 2) return
+    const dx = (e.changedTouches[0]?.clientX ?? touchX.current) - touchX.current
+    if (Math.abs(dx) > 40) { if (dx < 0) next(); else prev() }
+    touchX.current = null
+  }
   return (
-    // Mobile: imagen principal arriba + miniaturas en tira horizontal con scroll debajo.
-    // sm+: miniaturas en columna a la izquierda + imagen principal a la derecha (sin cambios).
+    // Móvil: imagen grande deslizable (swipe) con puntos indicadores — sin tira de miniaturas.
+    // sm+: columna de miniaturas a la izquierda + imagen principal a la derecha (sin cambios).
     <div className="flex flex-col sm:flex-row gap-3">
-      <div className="order-2 sm:order-1 flex flex-row sm:flex-col gap-2 shrink-0 overflow-x-auto sm:overflow-x-visible sm:max-h-[34rem] sm:overflow-y-auto scrollbar-thin pb-1 sm:pb-0">
+      {/* Miniaturas SOLO en sm+ (en móvil se navega por swipe + puntos, look de app). */}
+      <div className="hidden sm:flex sm:flex-col gap-2 shrink-0 sm:max-h-[34rem] sm:overflow-y-auto scrollbar-thin">
         {videoUrl && (
           <button type="button" onClick={() => setShowVideo(true)}
                   className="aspect-square w-20 shrink-0 border border-base-200 rounded-lg overflow-hidden relative hover:border-primary">
@@ -634,16 +644,23 @@ function Gallery({ imgs, videoUrl, active, onActive, title, t }: {
         ))}
       </div>
 
-      <div className="order-1 sm:order-2 relative flex-1 min-w-0">
-        <div className="aspect-square bg-base-100 border border-base-200 rounded-xl overflow-hidden flex items-center justify-center">
+      <div className="relative flex-1 min-w-0" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div className="aspect-square bg-base-100 border border-base-200 rounded-xl overflow-hidden flex items-center justify-center select-none">
           {showVideo && videoUrl
             ? <video src={videoUrl} controls autoPlay className="w-full h-full object-contain bg-black" />
             : src
-              ? <img id="nx-pdp-main-img" src={src} alt={title} className="w-full h-full object-contain cursor-zoom-in"
+              ? <img id="nx-pdp-main-img" src={src} alt={title} draggable={false} className="w-full h-full object-contain cursor-zoom-in"
                      onClick={() => setLightbox(true)}
                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '0' }} />
               : <span className="opacity-40 text-sm">{t('product.no_image')}</span>}
         </div>
+        {/* Móvil: botón flotante para ver el vídeo (las miniaturas están ocultas). */}
+        {videoUrl && !showVideo && (
+          <button type="button" onClick={() => setShowVideo(true)} aria-label={tt(t, 'product.play_video', 'Play video')}
+                  className="sm:hidden btn btn-sm btn-circle bg-base-100/85 backdrop-blur border-base-200 absolute top-2 left-2">
+            <FontAwesomeIcon icon={faPlay} className="text-primary" />
+          </button>
+        )}
         {lightbox && src && (
           <div className="fixed inset-0 z-[1000] bg-black/90 flex items-center justify-center p-6 cursor-zoom-out"
                onClick={() => setLightbox(false)} role="dialog" aria-modal="true">
@@ -666,11 +683,12 @@ function Gallery({ imgs, videoUrl, active, onActive, title, t }: {
         )}
         {total > 1 && !showVideo && (
           <>
+            {/* Flechas: ocultas en móvil (se usa swipe), visibles en sm+. */}
             <button type="button" onClick={prev}
-                    className="btn btn-sm btn-circle btn-ghost bg-base-100/80 backdrop-blur absolute left-2 top-1/2 -translate-y-1/2"
+                    className="hidden sm:flex btn btn-sm btn-circle btn-ghost bg-base-100/80 backdrop-blur absolute left-2 top-1/2 -translate-y-1/2"
                     aria-label="prev"><FontAwesomeIcon icon={faChevronLeft} /></button>
             <button type="button" onClick={next}
-                    className="btn btn-sm btn-circle btn-ghost bg-base-100/80 backdrop-blur absolute right-2 top-1/2 -translate-y-1/2"
+                    className="hidden sm:flex btn btn-sm btn-circle btn-ghost bg-base-100/80 backdrop-blur absolute right-2 top-1/2 -translate-y-1/2"
                     aria-label="next"><FontAwesomeIcon icon={faChevronRight} /></button>
             <span className="absolute bottom-2 right-3 text-[11px] px-2 py-0.5 rounded-full bg-base-100/80 border border-base-200">
               {active + 1} / {total}
@@ -678,6 +696,17 @@ function Gallery({ imgs, videoUrl, active, onActive, title, t }: {
           </>
         )}
       </div>
+
+      {/* Puntos indicadores SOLO en móvil — tocar salta a esa imagen (look de app). */}
+      {total > 1 && !showVideo && (
+        <div className="sm:hidden order-3 flex flex-wrap justify-center gap-1.5 pt-0.5">
+          {imgs.map((_, i) => (
+            <button key={i} type="button" onClick={() => onActive(i)}
+                    aria-label={`${t('product.image_n')} ${i + 1}`}
+                    className={`h-1.5 rounded-full transition-all ${i === active ? 'w-5 bg-primary' : 'w-1.5 bg-base-300'}`} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
