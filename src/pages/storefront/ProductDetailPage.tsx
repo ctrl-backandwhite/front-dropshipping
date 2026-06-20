@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
+import { createPortal } from 'react-dom'
 import { getProduct, getProductAttributes, getProductSpecifications, listStorefrontProducts, listReviews, createReview } from '../../api/catalog'
 import { useLocaleStore } from '../../store/locale'
 import { translateVariantCN } from '../../i18n/colorTerms'
@@ -15,7 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCartPlus, faBolt, faCircleCheck, faTruck, faRotateLeft, faGlobe, faCircleInfo,
   faIndustry, faStar, faShieldHalved, faMinus, faPlus, faShop, faChevronLeft, faChevronRight,
-  faPlay, faCircleExclamation,
+  faPlay, faCircleExclamation, faArrowLeft,
 } from '@fortawesome/free-solid-svg-icons'
 import { Breadcrumbs } from '../../components/Breadcrumbs'
 import { Reveal } from '../../components/Motion'
@@ -379,28 +380,44 @@ export default function ProductDetailPage() {
 
   return (
     <>
-      <Breadcrumbs items={[
-        // DROP-364: breadcrumb del PDP incluye categoría + título.
-        { label: tt(t, 'breadcrumb.catalog', 'Catalog'), to: '/catalog' },
-        { label: product.title },
-      ]} />
+      {/* DROP: en MÓVIL los breadcrumbs quedan poco visibles; mostramos un control "Volver
+          al catálogo" claro y táctil. En sm+ se ocultan y mandan los breadcrumbs de siempre. */}
+      <Link to="/catalog"
+            className="sm:hidden inline-flex items-center gap-2 mb-3 text-sm font-medium text-primary hover:underline">
+        <FontAwesomeIcon icon={faArrowLeft} className="text-[12px]" />
+        {tt(t, 'common.back_to_catalog', 'Back to catalog')}
+      </Link>
+
+      <div className="hidden sm:block">
+        <Breadcrumbs items={[
+          // DROP-364: breadcrumb del PDP incluye categoría + título.
+          { label: tt(t, 'breadcrumb.catalog', 'Catalog'), to: '/catalog' },
+          { label: product.title },
+        ]} />
+      </div>
 
       {/* =================== HEADER PDP (1688 layout) =================== */}
-      <section className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-6 lg:gap-10 items-start animate-fade-up">
+      {/* Móvil: flex-col con `order` para el orden pedido (título → imagen → variantes →
+          precio → resto). Desktop (lg): grid de 2 columnas idéntico al de siempre; el
+          <aside> usa `display:contents` en móvil para que sus hijos sean items del flex
+          y `order` los recoloque, y vuelve a ser una columna normal en lg (order-none). */}
+      <section className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-10 lg:items-start animate-fade-up">
 
         {/* Galería: DROP-342 carousel + thumbs + video. */}
-        <Gallery
-          imgs={galleryImgs}
-          videoUrl={videoImg?.sourceUrl}
-          active={activeImage}
-          onActive={setActiveImage}
-          title={product.title}
-          t={t}
-        />
+        <div className="order-2 lg:order-none">
+          <Gallery
+            imgs={galleryImgs}
+            videoUrl={videoImg?.sourceUrl}
+            active={activeImage}
+            onActive={setActiveImage}
+            title={product.title}
+            t={t}
+          />
+        </div>
 
         {/* Panel derecho (info + CTAs) */}
-        <aside className="space-y-4">
-          <header>
+        <aside className="contents lg:flex lg:flex-col lg:gap-4">
+          <header className="order-1 lg:order-none">
             <div className="flex items-center gap-2 flex-wrap">
               {product.brand && <span className="badge badge-ghost">{product.brand}</span>}
               {product.rating != null && (
@@ -412,70 +429,80 @@ export default function ProductDetailPage() {
               {(product as any).sku && (
                 <span className="text-[12px] opacity-60">SKU <code className="font-mono">{(product as any).sku}</code></span>
               )}
-              <span className="text-[12px] opacity-60">EXT <code className="font-mono">{product.externalId}</code></span>
+              {/* EXT: código interno del proveedor — útil en escritorio/admin, se oculta al cliente en móvil. */}
+              <span className="hidden sm:inline text-[12px] opacity-60">EXT <code className="font-mono">{product.externalId}</code></span>
             </div>
-            <h1 className="text-2xl font-medium mt-1.5 leading-snug">{product.title}</h1>
+            <h1 className="text-lg sm:text-2xl font-medium mt-1.5 leading-snug">{product.title}</h1>
           </header>
+
+          {/* DROP-346/347: variantes (color + talla) — en móvil van justo debajo de la imagen (order-3). */}
+          <div className="order-3 lg:order-none flex flex-col gap-4">
+            {/* DROP-346: color swatches */}
+            {colorOption && (
+              <ColorSwatches
+                option={colorOption}
+                active={activeColor}
+                onPick={handlePickColor}
+                t={t}
+              />
+            )}
+
+            {/* DROP-347: size inventory table */}
+            {sizeOption ? (
+              <SizeInventoryTable
+                option={sizeOption}
+                qtyBySize={qtyBySize}
+                setSizeQty={setSizeQty}
+                stockFor={sizeStock}
+                t={t}
+              />
+            ) : (
+              <SingleQtyRow qty={singleQty} setQty={setSingleQty} min={product.moq && product.moq > 1 ? product.moq : 1} t={t} />
+            )}
+          </div>
 
           {/* DROP-344/635: price block — un único precio destacado coherente
               (tramo aplicable al MOQ o displayPrice), con su moneda emparejada. */}
-          <PriceBlock
-            displayPrice={Number(featuredPrice)}
-            currency={featuredCurrency}
-            tiers={product.priceTiers ?? []}
-            moq={product.moq}
-            activeTierMin={activeTier?.minQty}
-            t={t}
-          />
+          <div className="order-4 lg:order-none">
+            <PriceBlock
+              displayPrice={Number(featuredPrice)}
+              currency={featuredCurrency}
+              tiers={product.priceTiers ?? []}
+              moq={product.moq}
+              activeTierMin={activeTier?.minQty}
+              t={t}
+            />
+          </div>
 
           {/* DROP-345: shipping/returns/origin */}
-          <ShippingBlock t={t} />
-
-          {/* DROP-346: color swatches */}
-          {colorOption && (
-            <ColorSwatches
-              option={colorOption}
-              active={activeColor}
-              onPick={handlePickColor}
-              t={t}
-            />
-          )}
-
-          {/* DROP-347: size inventory table */}
-          {sizeOption ? (
-            <SizeInventoryTable
-              option={sizeOption}
-              qtyBySize={qtyBySize}
-              setSizeQty={setSizeQty}
-              stockFor={sizeStock}
-              t={t}
-            />
-          ) : (
-            <SingleQtyRow qty={singleQty} setQty={setSingleQty} min={product.moq && product.moq > 1 ? product.moq : 1} t={t} />
-          )}
+          <div className="order-5 lg:order-none">
+            <ShippingBlock t={t} />
+          </div>
 
           {/* DROP-348/635: CTAs principales. Add-to-cart deshabilitado si falta
               elegir variante o no hay stock; el handler revalida MOQ. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <button type="button" disabled={!inStock || needsColor} onClick={() => addAll()}
-                    title={needsColor ? tt(t, 'product.select_variant', 'Please select a variant before adding to cart.') : undefined}
-                    className="btn btn-outline">
-              <FontAwesomeIcon icon={added ? faCircleCheck : faCartPlus} />
-              {added ? t('product.added') : t('product.add_to_cart')}
-            </button>
-            <button type="button" disabled={!inStock || needsColor} onClick={orderNow} className="btn btn-primary">
-              <FontAwesomeIcon icon={faBolt} /> {tt(t, 'product.order_now', 'Order now')}
-            </button>
+          <div className="order-6 lg:order-none flex flex-col gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button type="button" disabled={!inStock || needsColor} onClick={() => addAll()}
+                      title={needsColor ? tt(t, 'product.select_variant', 'Please select a variant before adding to cart.') : undefined}
+                      className="btn btn-outline">
+                <FontAwesomeIcon icon={added ? faCircleCheck : faCartPlus} />
+                {added ? t('product.added') : t('product.add_to_cart')}
+              </button>
+              <button type="button" disabled={!inStock || needsColor} onClick={orderNow} className="btn btn-primary">
+                <FontAwesomeIcon icon={faBolt} /> {tt(t, 'product.order_now', 'Order now')}
+              </button>
+            </div>
+            {needsColor && (
+              <p className="text-[12px] text-warning flex items-center gap-1.5">
+                <FontAwesomeIcon icon={faCircleInfo} />
+                {tt(t, 'product.select_variant', 'Please select a variant before adding to cart.')}
+              </p>
+            )}
           </div>
-          {needsColor && (
-            <p className="text-[12px] text-warning flex items-center gap-1.5">
-              <FontAwesomeIcon icon={faCircleInfo} />
-              {tt(t, 'product.select_variant', 'Please select a variant before adding to cart.')}
-            </p>
-          )}
 
           {/* DROP-349: bloque Dropship by NX036 */}
-          <div className="alert bg-base-200 border border-base-300 text-base-content text-[13px]">
+          <div className="order-7 lg:order-none alert bg-base-200 border border-base-300 text-base-content text-[13px]">
             <FontAwesomeIcon icon={faShop} className="text-primary" />
             <div className="flex-1">
               <div className="font-medium">{tt(t, 'product.dropship.title', 'Dropship by NX036')}</div>
@@ -489,7 +516,7 @@ export default function ProductDetailPage() {
           </div>
 
           {/* DROP-356: price disclosure */}
-          <p className="text-[11px] opacity-60 leading-relaxed">
+          <p className="order-8 lg:order-none text-[11px] opacity-60 leading-relaxed">
             {tt(t, 'product.price_disclosure',
               'Prices shown exclude duties, VAT and last-mile shipping. Final landed cost is computed at checkout based on destination and selected logistics.')}
           </p>
@@ -600,12 +627,24 @@ function Gallery({ imgs, videoUrl, active, onActive, title, t }: {
   const next = () => onActive((active + 1) % Math.max(1, total))
   const current = imgs[active]
   const src = current?.cdnUrl || current?.sourceUrl
+  // DROP: swipe táctil en móvil — pasar imágenes deslizando como en cualquier app de ecommerce.
+  const touchX = useRef<number | null>(null)
+  const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.touches[0]?.clientX ?? null }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchX.current == null || total < 2) return
+    const dx = (e.changedTouches[0]?.clientX ?? touchX.current) - touchX.current
+    if (Math.abs(dx) > 40) { if (dx < 0) next(); else prev() }
+    touchX.current = null
+  }
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-[5rem_1fr] gap-3">
-      <div className="flex flex-col gap-2 max-h-[34rem] overflow-y-auto scrollbar-thin">
+    // Móvil: imagen grande deslizable (swipe) con puntos indicadores — sin tira de miniaturas.
+    // sm+: columna de miniaturas a la izquierda + imagen principal a la derecha (sin cambios).
+    <div className="flex flex-col sm:flex-row gap-3">
+      {/* Miniaturas SOLO en sm+ (en móvil se navega por swipe + puntos, look de app). */}
+      <div className="hidden sm:flex sm:flex-col gap-2 shrink-0 sm:max-h-[34rem] sm:overflow-y-auto scrollbar-thin">
         {videoUrl && (
           <button type="button" onClick={() => setShowVideo(true)}
-                  className="aspect-square w-20 border border-base-200 rounded-lg overflow-hidden relative hover:border-primary">
+                  className="aspect-square w-20 shrink-0 border border-base-200 rounded-lg overflow-hidden relative hover:border-primary">
             <video src={videoUrl} muted playsInline className="w-full h-full object-cover" />
             <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-white">
               <FontAwesomeIcon icon={faPlay} />
@@ -615,50 +654,64 @@ function Gallery({ imgs, videoUrl, active, onActive, title, t }: {
         {imgs.map((img, i) => (
           <button key={img.id} type="button" onClick={() => { onActive(i); setShowVideo(false) }}
                   aria-label={`${t('product.image_n')} ${i + 1}`}
-                  className={`aspect-square w-20 border rounded-lg overflow-hidden transition-colors ${i === active && !showVideo ? 'border-primary ring-2 ring-primary/20' : 'border-base-200 hover:border-base-content/30'}`}>
+                  className={`aspect-square w-20 shrink-0 border rounded-lg overflow-hidden transition-colors ${i === active && !showVideo ? 'border-primary ring-2 ring-primary/20' : 'border-base-200 hover:border-base-content/30'}`}>
             <img src={img.cdnUrl || img.sourceUrl} alt="" loading="lazy" className="w-full h-full object-cover"
                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
           </button>
         ))}
       </div>
 
-      <div className="relative">
-        <div className="aspect-square bg-base-100 border border-base-200 rounded-xl overflow-hidden flex items-center justify-center">
+      <div className="relative flex-1 min-w-0" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div className="aspect-square bg-base-100 border border-base-200 rounded-xl overflow-hidden flex items-center justify-center select-none">
           {showVideo && videoUrl
             ? <video src={videoUrl} controls autoPlay className="w-full h-full object-contain bg-black" />
             : src
-              ? <img id="nx-pdp-main-img" src={src} alt={title} className="w-full h-full object-contain cursor-zoom-in"
+              ? <img id="nx-pdp-main-img" src={src} alt={title} draggable={false} className="w-full h-full object-contain cursor-zoom-in"
                      onClick={() => setLightbox(true)}
                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '0' }} />
               : <span className="opacity-40 text-sm">{t('product.no_image')}</span>}
         </div>
-        {lightbox && src && (
-          <div className="fixed inset-0 z-[1000] bg-black/90 flex items-center justify-center p-6 cursor-zoom-out"
+        {/* Móvil: botón flotante para ver el vídeo (las miniaturas están ocultas). */}
+        {videoUrl && !showVideo && (
+          <button type="button" onClick={() => setShowVideo(true)} aria-label={tt(t, 'product.play_video', 'Play video')}
+                  className="sm:hidden btn btn-sm btn-circle bg-base-100/85 backdrop-blur border-base-200 absolute top-2 left-2">
+            <FontAwesomeIcon icon={faPlay} className="text-primary" />
+          </button>
+        )}
+        {/* Lightbox: se monta vía portal en <body> para que `fixed inset-0` cubra TODA la
+            pantalla. Si se renderizara aquí, el `transform` de animate-fade-up lo confinaría
+            al contenedor del producto (por eso antes salía recortado). */}
+        {lightbox && src && createPortal(
+          <div className="fixed inset-0 z-[1000] bg-black/95 flex items-center justify-center cursor-zoom-out overscroll-contain"
                onClick={() => setLightbox(false)} role="dialog" aria-modal="true">
-            <img src={src} alt={title} className="max-w-full max-h-full object-contain"
+            <img src={src} alt={title} className="max-w-[100vw] max-h-[100dvh] w-auto h-auto object-contain p-2"
                  onClick={(e) => e.stopPropagation()} />
             {total > 1 && (
               <>
                 <button type="button" onClick={(e) => { e.stopPropagation(); prev() }}
-                        className="btn btn-circle btn-ghost text-white bg-black/30 absolute left-4 top-1/2 -translate-y-1/2"
+                        className="btn btn-circle btn-ghost text-white bg-black/40 absolute left-3 top-1/2 -translate-y-1/2"
                         aria-label="prev"><FontAwesomeIcon icon={faChevronLeft} className="text-xl" /></button>
                 <button type="button" onClick={(e) => { e.stopPropagation(); next() }}
-                        className="btn btn-circle btn-ghost text-white bg-black/30 absolute right-4 top-1/2 -translate-y-1/2"
+                        className="btn btn-circle btn-ghost text-white bg-black/40 absolute right-3 top-1/2 -translate-y-1/2"
                         aria-label="next"><FontAwesomeIcon icon={faChevronRight} className="text-xl" /></button>
+                <span className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[12px] text-white/90 px-2.5 py-1 rounded-full bg-white/10">
+                  {active + 1} / {total}
+                </span>
               </>
             )}
             <button type="button" onClick={(e) => { e.stopPropagation(); setLightbox(false) }}
-                    className="btn btn-circle btn-ghost text-white bg-black/30 absolute top-4 right-4"
+                    className="btn btn-circle btn-ghost text-white bg-black/40 absolute top-3 right-3"
                     aria-label="close"><FontAwesomeIcon icon={faPlay} className="rotate-45" /></button>
-          </div>
+          </div>, document.body
         )}
         {total > 1 && !showVideo && (
           <>
+            {/* Flechas: ocultas en móvil (se usa swipe), visibles en sm+. */}
             <button type="button" onClick={prev}
-                    className="btn btn-sm btn-circle btn-ghost bg-base-100/80 backdrop-blur absolute left-2 top-1/2 -translate-y-1/2"
+                    className="hidden sm:flex btn btn-sm btn-circle btn-ghost bg-base-100/80 backdrop-blur absolute left-2 top-1/2 -translate-y-1/2"
                     aria-label="prev"><FontAwesomeIcon icon={faChevronLeft} /></button>
             <button type="button" onClick={next}
-                    className="btn btn-sm btn-circle btn-ghost bg-base-100/80 backdrop-blur absolute right-2 top-1/2 -translate-y-1/2"
+                    className="hidden sm:flex btn btn-sm btn-circle btn-ghost bg-base-100/80 backdrop-blur absolute right-2 top-1/2 -translate-y-1/2"
                     aria-label="next"><FontAwesomeIcon icon={faChevronRight} /></button>
             <span className="absolute bottom-2 right-3 text-[11px] px-2 py-0.5 rounded-full bg-base-100/80 border border-base-200">
               {active + 1} / {total}
@@ -666,6 +719,17 @@ function Gallery({ imgs, videoUrl, active, onActive, title, t }: {
           </>
         )}
       </div>
+
+      {/* Puntos indicadores SOLO en móvil — tocar salta a esa imagen (look de app). */}
+      {total > 1 && !showVideo && (
+        <div className="sm:hidden order-3 flex flex-wrap justify-center gap-1.5 pt-0.5">
+          {imgs.map((_, i) => (
+            <button key={i} type="button" onClick={() => onActive(i)}
+                    aria-label={`${t('product.image_n')} ${i + 1}`}
+                    className={`h-1.5 rounded-full transition-all ${i === active ? 'w-5 bg-primary' : 'w-1.5 bg-base-300'}`} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -683,7 +747,7 @@ function PriceBlock({ displayPrice, currency, tiers, moq, activeTierMin, t }: {
     <div className="card card-border bg-base-100">
       <div className="card-body p-4">
         <div className="flex items-baseline gap-3 flex-wrap">
-          <span className="text-3xl font-medium text-primary">{format(displayPrice, currency)}</span>
+          <span className="text-2xl sm:text-3xl font-medium text-primary">{format(displayPrice, currency)}</span>
           {moq > 1 && (
             <span className="badge badge-outline">{t('product.moq')} <strong className="ml-1">{moq}</strong></span>
           )}

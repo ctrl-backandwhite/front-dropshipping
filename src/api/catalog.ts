@@ -236,7 +236,8 @@ export async function searchProducts(q: string, lang = 'es', page = 0, size = 24
   return data
 }
 
-export async function adminListProducts(status?: string, page = 0, size = 30, lang = 'es', categoryId?: string) {
+export async function adminListProducts(status?: string, page = 0, size = 30, lang = 'es', categoryId?: string,
+                                        sort?: string) {
   // DROP-453: limpiar status no válidos antes de mandar (axios a veces serializa
   // undefined como string "undefined" en versiones antiguas).
   const params: Record<string, any> = { page, size, lang }
@@ -244,6 +245,7 @@ export async function adminListProducts(status?: string, page = 0, size = 30, la
   if (status && status !== 'ALL' && status !== 'undefined' && status !== 'null') {
     params.status = status
   }
+  if (sort) params.sort = sort
   const { data } = await api.get<PageResponse<ProductSummary>>('/admin/catalog/products', { params })
   return data
 }

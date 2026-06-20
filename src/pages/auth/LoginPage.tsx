@@ -3,13 +3,19 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCircleNodes, faSignInAlt, faEye, faEyeSlash,
-  faTriangleExclamation, faShield, faBolt, faGlobe, faQuoteLeft,
+  faTriangleExclamation, faShield, faBolt, faGlobe, faQuoteLeft, faArrowLeft,
 } from '@fortawesome/free-solid-svg-icons'
 import { dialog } from '../../store/dialog'
 import { faGoogle, faGithub, faApple } from '@fortawesome/free-brands-svg-icons'
 import { useAuthStore } from '../../store/auth'
 import { API_BASE } from '../../api/client'
 import { useT } from '../../store/locale'
+
+/** i18n estricto — devuelve el fallback en lugar de exponer la clave cruda si falta la traducción. */
+function tt(t: (k: string) => string, key: string, fallback: string): string {
+  const v = t(key)
+  return v === key ? fallback : v
+}
 
 // Only surface the demo accounts panel in non-production builds, and only when explicitly enabled.
 const DEMO_PANEL_ENABLED =
@@ -119,6 +125,13 @@ export default function LoginPage() {
         <Link to="/" className="flex lg:hidden items-center justify-center gap-2 mb-2 font-bold text-lg">
           <FontAwesomeIcon icon={faCircleNodes} className="text-primary" />
           NX036 Dropshipping
+        </Link>
+
+        {/* DROP: enlace claro a la home — esta página es standalone (sin header de tienda),
+            así que sin esto el usuario quedaba atrapado en móvil y escritorio. */}
+        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline mb-3 self-start">
+          <FontAwesomeIcon icon={faArrowLeft} className="text-[12px]" />
+          {tt(t, 'common.back_to_store', 'Back to store')}
         </Link>
 
         <div>

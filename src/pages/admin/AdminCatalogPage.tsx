@@ -25,6 +25,8 @@ export default function AdminCatalogPage() {
   const [status, setStatus] = useState<string>(params.get('status') ?? 'ALL')
   const [categoryId, setCategoryId] = useState<string | null>(params.get('categoryId'))
   const [q, setQ] = useState(params.get('q') ?? '')
+  // Ordenación por columna (precio). undefined = orden natural del backend.
+  const [sort, setSort] = useState<string | undefined>(params.get('sort') ?? undefined)
   const [page, setPage] = useState(0)
   const [createOpen, setCreateOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -44,10 +46,10 @@ export default function AdminCatalogPage() {
   }, [status, categoryId, q, setParams])
 
   const { data } = useQuery({
-    queryKey: ['admin-products', status, categoryId, page],
+    queryKey: ['admin-products', status, categoryId, page, sort],
     // Backend accepts undefined to mean "all statuses"; category is filtered server-side
     // so paging/totals are correct across the whole catalog (not just the current page).
-    queryFn: () => adminListProducts(status === 'ALL' ? undefined : status, page, PAGE_SIZE, 'es', categoryId ?? undefined),
+    queryFn: () => adminListProducts(status === 'ALL' ? undefined : status, page, PAGE_SIZE, 'es', categoryId ?? undefined, sort),
   })
   const { data: categories = [] } = useQuery({
     queryKey: ['admin-categories-flat'],
@@ -218,7 +220,21 @@ export default function AdminCatalogPage() {
                 <input type="checkbox" className="checkbox checkbox-xs" checked={allSelected} onChange={toggleAll} aria-label={t('admin.categories.select_all')} />
               </th>
               <th className="px-4 py-2 font-medium">{t('admin.catalog.col.product')}</th>
-              <th className="px-4 py-2 font-medium text-right">{t('admin.catalog.col.price')}</th>
+              <th className="px-4 py-2 font-medium text-right">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 ml-auto hover:text-primary transition-colors"
+                  onClick={() => {
+                    // Ciclo: natural → ascendente → descendente → natural
+                    setSort(s => (s === 'price_asc' ? 'price_desc' : s === 'price_desc' ? undefined : 'price_asc'))
+                    setPage(0)
+                  }}
+                  title={t('admin.catalog.sort.byPrice')}
+                >
+                  {t('admin.catalog.col.price')}
+                  <i className={`fas fa-xs ${sort === 'price_asc' ? 'fa-arrow-up-short-wide text-primary' : sort === 'price_desc' ? 'fa-arrow-down-wide-short text-primary' : 'fa-sort text-base-content/30'}`} />
+                </button>
+              </th>
               <th className="px-4 py-2 font-medium text-right">{t('admin.catalog.col.sales')}</th>
               <th className="px-4 py-2 font-medium text-right">{t('admin.catalog.col.trend')}</th>
               <th className="px-4 py-2 font-medium">{t('admin.catalog.col.status')}</th>
