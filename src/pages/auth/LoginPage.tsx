@@ -8,6 +8,7 @@ import {
 import { dialog } from '../../store/dialog'
 import { faGoogle, faGithub, faApple } from '@fortawesome/free-brands-svg-icons'
 import { useAuthStore } from '../../store/auth'
+import { API_BASE } from '../../api/client'
 import { useT } from '../../store/locale'
 
 // Only surface the demo accounts panel in non-production builds, and only when explicitly enabled.
@@ -149,7 +150,7 @@ export default function LoginPage() {
 
           {/* SSO row — DROP-247 */}
           <div className="mt-6 grid grid-cols-3 gap-2">
-            <SsoButton provider="google" icon={faGoogle} onClick={() => { window.location.href = '/oauth2/authorization/google' }} />
+            <SsoButton provider="google" icon={faGoogle} onClick={() => { window.location.href = `${API_BASE}/oauth2/authorization/google` }} />
             <SsoButton provider="github" icon={faGithub} onClick={() => dialog.alert(t('login.sso_soon'))} />
             <SsoButton provider="apple"  icon={faApple}  onClick={() => dialog.alert(t('login.sso_soon'))} />
           </div>

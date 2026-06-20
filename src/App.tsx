@@ -34,6 +34,7 @@ import AdminWarehousesPage from './pages/admin/AdminWarehousesPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import ActivatePage from './pages/auth/ActivatePage'
+import AuthCallbackPage from './pages/auth/AuthCallbackPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminCatalogPage from './pages/admin/AdminCatalogPage'
 import AdminProductDetailPage from './pages/admin/AdminProductDetailPage'
@@ -85,6 +86,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/activate" element={<ActivatePage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route path="/newsletter/unsubscribe" element={<NewsletterUnsubscribePage />} />
 
       <Route element={<StorefrontLayout />}>

@@ -1,5 +1,15 @@
 import { create } from 'zustand'
 import { api } from '../api/client'
+import { authToken } from '../lib/authToken'
+
+/** Respuesta del login/refresh por token: par de tokens + perfil. */
+interface LoginResponse {
+  token: string
+  refreshToken: string
+  tokenType: string
+  expiresIn: number
+  user: CurrentUser
+}
 
 export interface CurrentUser {
   id: string
@@ -22,6 +32,8 @@ interface AuthState {
   loading: boolean
   initialized: boolean
   init: () => Promise<void>
+  // Carga /me con el token actual (usado por el callback de Google tras guardar el token).
+  fetchMe: () => Promise<void>
   login: (email: string, password: string) => Promise<CurrentUser>
   register: (data: RegisterPayload) => Promise<{ userId: string; message: string }>
   activate: (code: string) => Promise<void>
@@ -52,7 +64,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (get().initialized) return
     set({ loading: true })
     try {
-      const { data } = await api.get<CurrentUser>('/me')
+      // Sin token no llamamos a /me (evita un 401 → refresh inútil en el arranque en frío).
+      const { data } = authToken.access ? await api.get<CurrentUser>('/me') : { data: null }
       set({ user: data ?? null })
     } catch {
       set({ user: null })
@@ -61,12 +74,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  async fetchMe() {
+    set({ loading: true })
+    try {
+      const { data } = await api.get<CurrentUser>('/me')
+      set({ user: data ?? null, initialized: true })
+    } catch {
+      set({ user: null, initialized: true })
+    } finally {
+      set({ loading: false })
+    }
+  },
+
   async login(email, password) {
     set({ loading: true })
     try {
-      const { data } = await api.post<CurrentUser>('/auth/login', { email, password })
-      set({ user: data, initialized: true })
-      return data
+      const { data } = await api.post<LoginResponse>('/auth/login', { email, password })
+      authToken.set(data.token, data.refreshToken)
+      set({ user: data.user, initialized: true })
+      return data.user
     } finally {
       set({ loading: false })
     }
@@ -87,6 +113,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       // ignored — we'll clear state anyway
     }
+    authToken.clear()
     set({ user: null })
   },
 
