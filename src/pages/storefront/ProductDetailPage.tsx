@@ -601,11 +601,13 @@ function Gallery({ imgs, videoUrl, active, onActive, title, t }: {
   const current = imgs[active]
   const src = current?.cdnUrl || current?.sourceUrl
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-[5rem_1fr] gap-3">
-      <div className="flex flex-col gap-2 max-h-[34rem] overflow-y-auto scrollbar-thin">
+    // Mobile: imagen principal arriba + miniaturas en tira horizontal con scroll debajo.
+    // sm+: miniaturas en columna a la izquierda + imagen principal a la derecha (sin cambios).
+    <div className="flex flex-col sm:flex-row gap-3">
+      <div className="order-2 sm:order-1 flex flex-row sm:flex-col gap-2 shrink-0 overflow-x-auto sm:overflow-x-visible sm:max-h-[34rem] sm:overflow-y-auto scrollbar-thin pb-1 sm:pb-0">
         {videoUrl && (
           <button type="button" onClick={() => setShowVideo(true)}
-                  className="aspect-square w-20 border border-base-200 rounded-lg overflow-hidden relative hover:border-primary">
+                  className="aspect-square w-20 shrink-0 border border-base-200 rounded-lg overflow-hidden relative hover:border-primary">
             <video src={videoUrl} muted playsInline className="w-full h-full object-cover" />
             <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-white">
               <FontAwesomeIcon icon={faPlay} />
@@ -615,14 +617,14 @@ function Gallery({ imgs, videoUrl, active, onActive, title, t }: {
         {imgs.map((img, i) => (
           <button key={img.id} type="button" onClick={() => { onActive(i); setShowVideo(false) }}
                   aria-label={`${t('product.image_n')} ${i + 1}`}
-                  className={`aspect-square w-20 border rounded-lg overflow-hidden transition-colors ${i === active && !showVideo ? 'border-primary ring-2 ring-primary/20' : 'border-base-200 hover:border-base-content/30'}`}>
+                  className={`aspect-square w-20 shrink-0 border rounded-lg overflow-hidden transition-colors ${i === active && !showVideo ? 'border-primary ring-2 ring-primary/20' : 'border-base-200 hover:border-base-content/30'}`}>
             <img src={img.cdnUrl || img.sourceUrl} alt="" loading="lazy" className="w-full h-full object-cover"
                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
           </button>
         ))}
       </div>
 
-      <div className="relative">
+      <div className="order-1 sm:order-2 relative flex-1 min-w-0">
         <div className="aspect-square bg-base-100 border border-base-200 rounded-xl overflow-hidden flex items-center justify-center">
           {showVideo && videoUrl
             ? <video src={videoUrl} controls autoPlay className="w-full h-full object-contain bg-black" />
