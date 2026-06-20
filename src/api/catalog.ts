@@ -30,6 +30,8 @@ export interface PageResponse<T> {
 export interface ProductDetail extends ProductSummary {
   source: string
   externalId: string
+  // URL del detalle del producto en la plataforma de origen (1688/Taobao/…). Solo uso interno/admin.
+  sourceUrl?: string
   sku?: string
   titleZh: string
   description?: string
