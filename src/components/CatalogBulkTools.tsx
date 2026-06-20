@@ -238,7 +238,8 @@ export function CatalogBulkTools({ kind, onDone }: { kind: 'products' | 'categor
 
   async function copyTemplate() {
     try {
-      await navigator.clipboard.writeText(FULL_EXAMPLES[kind])
+      // Copia lo que haya en el editor (por defecto, la plantilla completa pre-cargada).
+      await navigator.clipboard.writeText(text)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch { /* clipboard no disponible */ }
@@ -412,7 +413,7 @@ export function CatalogBulkTools({ kind, onDone }: { kind: 'products' | 'categor
         <FontAwesomeIcon icon={reindexing ? faSpinner : faRotate} className={reindexing ? 'fa-spin' : ''} />
         {t('admin.catalog.reindex.btn')}
       </button>
-      <button onClick={() => { setText(EXAMPLES[kind]); setErrors([]); setShowFields(false); setFileRows(null); setFileName(''); setProgress(null); setOpen(true) }} className="btn btn-outline btn-sm text-[12px]">
+      <button onClick={() => { setText(FULL_EXAMPLES[kind]); setErrors([]); setShowFields(false); setFileRows(null); setFileName(''); setProgress(null); setOpen(true) }} className="btn btn-outline btn-sm text-[12px]">
         <FontAwesomeIcon icon={faFileImport} /> {t('admin.catalog.bulk.btn')}
       </button>
 
@@ -464,19 +465,6 @@ export function CatalogBulkTools({ kind, onDone }: { kind: 'products' | 'categor
               )}
             </div>
 
-            {/* Plantilla completa de ejemplo SIEMPRE visible (read-only) + copiar al portapapeles. */}
-            <details className="mb-2 shrink-0 rounded-box border border-base-200 bg-base-200/40" open>
-              <summary className="cursor-pointer select-none px-3 py-1.5 text-[12px] font-medium flex items-center justify-between">
-                <span><FontAwesomeIcon icon={faFileImport} /> Plantilla de ejemplo completa</span>
-                <button type="button" onClick={(e) => { e.preventDefault(); copyTemplate() }}
-                        className="btn btn-ghost btn-xs text-[12px]">
-                  <FontAwesomeIcon icon={copied ? faCircleCheck : faCopy} className={copied ? 'text-success' : ''} />
-                  {copied ? 'Copiado' : 'Copiar JSON'}
-                </button>
-              </summary>
-              <pre className="px-3 pb-2 text-[11px] font-mono max-h-44 overflow-auto whitespace-pre">{FULL_EXAMPLES[kind]}</pre>
-            </details>
-
             {/* Validación AUTOMÁTICA en vivo del JSON pegado. */}
             <div className="flex items-center justify-between mb-1 shrink-0 gap-2">
               <span className={`text-[12px] flex items-center gap-1 ${
@@ -499,6 +487,11 @@ export function CatalogBulkTools({ kind, onDone }: { kind: 'products' | 'categor
                 <button type="button" onClick={() => { setText(FULL_EXAMPLES[kind]); setErrors([]) }}
                         className="btn btn-ghost btn-xs text-[12px]">
                   <FontAwesomeIcon icon={faFileImport} /> {t('admin.catalog.bulk.template_full')}
+                </button>
+                <button type="button" onClick={copyTemplate} disabled={!text.trim()}
+                        className="btn btn-ghost btn-xs text-[12px]">
+                  <FontAwesomeIcon icon={copied ? faCircleCheck : faCopy} className={copied ? 'text-success' : ''} />
+                  {copied ? 'Copiado' : 'Copiar JSON'}
                 </button>
               </div>
             </div>
