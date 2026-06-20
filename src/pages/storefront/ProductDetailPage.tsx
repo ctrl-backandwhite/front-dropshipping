@@ -429,11 +429,33 @@ export default function ProductDetailPage() {
               {(product as any).sku && (
                 <span className="text-[12px] opacity-60">SKU <code className="font-mono">{(product as any).sku}</code></span>
               )}
-              {/* EXT: código interno del proveedor — útil en escritorio/admin, se oculta al cliente en móvil. */}
-              <span className="hidden sm:inline text-[12px] opacity-60">EXT <code className="font-mono">{product.externalId}</code></span>
+              {/* El código EXT y el ORIGEN (1688/Taobao/…) NO se muestran al cliente: van en el bloque admin de abajo. */}
             </div>
             <h1 className="text-lg sm:text-2xl font-medium mt-1.5 leading-snug">{product.title}</h1>
           </header>
+
+          {/* === Solo ADMIN: origen del producto + compra en la plataforma de origen === */}
+          {isAdmin && (
+            <div className="order-1 lg:order-none rounded-lg border border-warning/40 bg-warning/10 p-3 space-y-2">
+              <div className="flex items-center gap-2 flex-wrap text-[12px]">
+                <span className="badge badge-warning badge-sm gap-1">
+                  <FontAwesomeIcon icon={faShop} /> {tt(t, 'admin.product.origin', 'Origen')}: <strong className="capitalize">{product.source}</strong>
+                </span>
+                <span className="opacity-70">EXT <code className="font-mono">{product.externalId}</code></span>
+              </div>
+              {product.sourceUrl && (
+                <a href={product.sourceUrl} target="_blank" rel="noreferrer"
+                   className="btn btn-sm btn-warning btn-outline gap-2 w-full sm:w-auto">
+                  <FontAwesomeIcon icon={faShop} />
+                  {tt(t, 'admin.product.buy_at_origin', 'Comprar en origen')} ({product.source})
+                </a>
+              )}
+              <p className="text-[11px] opacity-60 leading-snug">
+                {tt(t, 'admin.product.origin_hint',
+                  'Visible solo para admin. Para comprar al proveedor: abre el enlace, añade al carrito y procesa el pago en la plataforma de origen.')}
+              </p>
+            </div>
+          )}
 
           {/* DROP-346/347: variantes (color + talla) — en móvil van justo debajo de la imagen (order-3). */}
           <div className="order-3 lg:order-none flex flex-col gap-4">
