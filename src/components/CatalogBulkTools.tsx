@@ -62,6 +62,7 @@ const SCHEMAS: Record<'products' | 'categories', FieldDef[]> = {
     { key: 'leadTimeDays', type: 'int', descKey: 'admin.catalog.bulk.fd.leadTimeDays' },
     { key: 'status', type: 'string', descKey: 'admin.catalog.bulk.fd.status' },
     { key: 'externalId', type: 'string', descKey: 'admin.catalog.bulk.fd.externalId' },
+    { key: 'sourceUrl', type: 'string', descKey: 'admin.catalog.bulk.fd.sourceUrl' },
   ],
   categories: [
     { key: 'slug', required: true, type: 'string', descKey: 'admin.catalog.bulk.fd.slug' },
@@ -172,7 +173,8 @@ const FULL_EXAMPLES: Record<'products' | 'categories', string> = {
     "dropshipPickupRate48h": 0.98,
     "crossBorderSupport": { "fastShipping": true, "warehouses": ["DE", "US"] },
     "status": "ACTIVE",
-    "externalId": "headset-x-001"
+    "externalId": "979099339858",
+    "sourceUrl": "https://detail.1688.com/offer/979099339858.html"
   }
 ]`,
   categories: `[
