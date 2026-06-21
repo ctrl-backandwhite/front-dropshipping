@@ -41,6 +41,21 @@ export async function cancelSubscription() {
   await api.post('/me/subscription/cancel')
 }
 
+export interface Invoice {
+  number?: string
+  total?: number
+  currency?: string
+  status?: string
+  created?: number
+  pdfUrl?: string
+  hostedUrl?: string
+}
+
+export async function listInvoices() {
+  const { data } = await api.get<Invoice[]>('/me/billing/invoices')
+  return data
+}
+
 export async function listPlans() {
   const { data } = await api.get<Plan[]>('/storefront/billing/plans')
   return data
