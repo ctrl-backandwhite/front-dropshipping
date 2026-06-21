@@ -8,8 +8,37 @@ export interface Plan {
   priceMonthlyCents: number
   priceYearlyCents: number
   currency: string
+  // Precios YA convertidos a la moneda del usuario (el backend hace toda la conversión CNY→display).
+  displayMonthly?: number
+  displayYearly?: number
+  displayMonthlyFormatted?: string
+  displayYearlyFormatted?: string
+  displayCurrency?: string
   position: number
   limits: Record<string, number>
+}
+
+export interface MySubscription {
+  planId: string
+  status: string
+  billingPeriod: string
+  currentPeriodEnd?: string
+  cancelAt?: string
+}
+
+/** Contrata un plan cobrando con la tarjeta guardada por defecto. */
+export async function subscribeWithSavedCard(planCode: string, period: 'MONTHLY' | 'YEARLY') {
+  const { data } = await api.post<{ subscriptionId: string; status: string }>('/me/subscription', { planCode, period })
+  return data
+}
+
+export async function currentSubscription() {
+  const res = await api.get<MySubscription>('/me/subscription', { validateStatus: (s) => s === 200 || s === 204 })
+  return res.status === 204 ? null : res.data
+}
+
+export async function cancelSubscription() {
+  await api.post('/me/subscription/cancel')
 }
 
 export async function listPlans() {
