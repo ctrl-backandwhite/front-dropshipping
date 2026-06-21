@@ -1,39 +1,24 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import {
-  listPlans, subscribeWithSavedCard, currentSubscription, cancelSubscription, type Plan,
-} from '../../api/billing'
+import { Link } from 'react-router-dom'
+import { listPlans, currentSubscription } from '../../api/billing'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCheck } from '@fortawesome/free-solid-svg-icons'
 import { useT } from '../../store/locale'
-import { dialog } from '../../store/dialog'
+import { useAuthStore } from '../../store/auth'
 
+/**
+ * Página PÚBLICA de precios (/pricing): cualquiera, logueado o no, ve los precios de cada plan
+ * (ya convertidos a su moneda por el backend). NO se contrata aquí: el CTA lleva a iniciar sesión
+ * o, si ya hay sesión, al perfil, donde vive la contratación (PlanSelectorSection).
+ */
 export default function PlansPage() {
   const t = useT()
-  const qc = useQueryClient()
+  const user = useAuthStore((s) => s.user)
   const [period, setPeriod] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY')
   const { data: plans = [] } = useQuery({ queryKey: ['plans'], queryFn: listPlans })
-  // Suscripción vigente del usuario (null si no tiene / no logueado → la query falla en silencio).
-  const { data: current } = useQuery({ queryKey: ['my-subscription'], queryFn: currentSubscription, retry: false })
-
-  const subscribeMut = useMutation({
-    mutationFn: ({ plan }: { plan: Plan }) => subscribeWithSavedCard(plan.code, period),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['my-subscription'] })
-      dialog.alert({ variant: 'success', message: t('plans.subscribed_ok') })
-    },
-    onError: (e: any) => {
-      const msg = e?.response?.status === 422 ? t('plans.need_card') : (e?.response?.data?.message ?? t('plans.error'))
-      dialog.alert({ variant: 'error', message: msg })
-    },
-  })
-  const cancelMut = useMutation({
-    mutationFn: cancelSubscription,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['my-subscription'] })
-      dialog.alert({ variant: 'success', message: t('plans.canceled_ok') })
-    },
-  })
+  // Suscripción vigente solo si hay sesión; sin login la query falla en silencio (retry:false).
+  const { data: current } = useQuery({ queryKey: ['my-subscription'], queryFn: currentSubscription, retry: false, enabled: !!user })
 
   return (
     <div>
@@ -60,6 +45,7 @@ export default function PlansPage() {
           const isEnterprise = plan.code === 'ENTERPRISE'
           const isPopular = plan.position === 3
           const isCurrent = current?.planId === plan.id && current?.status === 'ACTIVE'
+          const btnCls = `btn w-full ${isPopular ? 'btn-primary' : 'btn-outline'}`
           return (
             <div key={plan.id} className={`card bg-base-100 ${isPopular ? 'border-2 border-primary shadow-lg' : 'card-border'} relative`}>
               {isPopular && (
@@ -92,25 +78,17 @@ export default function PlansPage() {
                   ))}
                 </ul>
 
-                <div className="card-actions mt-4 flex-col">
+                <div className="card-actions mt-4">
                   {isEnterprise ? (
-                    <button className={`btn w-full ${isPopular ? 'btn-primary' : 'btn-outline'}`}>{t('plans.contact_sales')}</button>
+                    <a href="/connect" className={btnCls}>{t('plans.contact_sales')}</a>
                   ) : isCurrent ? (
-                    <>
-                      <button disabled className="btn w-full btn-success btn-outline">{t('plans.current')}</button>
-                      <button
-                        disabled={cancelMut.isPending}
-                        onClick={() => dialog.confirm({ message: t('plans.cancel_confirm'), variant: 'error' }).then((ok) => ok && cancelMut.mutate())}
-                        className="btn btn-ghost btn-sm w-full text-error">{t('plans.cancel')}</button>
-                    </>
+                    <button disabled className="btn w-full btn-success btn-outline">{t('plans.current')}</button>
+                  ) : user ? (
+                    // Sesión iniciada: la contratación vive en el perfil.
+                    <Link to="/profile" className={btnCls}>{t('plans.go_contract')}</Link>
                   ) : (
-                    <button
-                      disabled={subscribeMut.isPending}
-                      onClick={() => subscribeMut.mutate({ plan })}
-                      className={`btn w-full ${isPopular ? 'btn-primary' : 'btn-outline'}`}
-                    >
-                      {t('plans.choose')}
-                    </button>
+                    // Sin sesión: invitar a entrar para poder contratar.
+                    <Link to="/login" className={btnCls}>{t('plans.login_to_subscribe')}</Link>
                   )}
                 </div>
               </div>
@@ -122,7 +100,7 @@ export default function PlansPage() {
   )
 }
 
-// Fall back to the backend-provided string when no localized key exists.
+// Usa la traducción si existe; si falta la clave, cae al texto que da el backend.
 function localized(t: (k: string) => string, key: string, fallback?: string | null): string {
   const v = t(key)
   return v === key ? (fallback ?? '') : v
