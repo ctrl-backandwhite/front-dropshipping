@@ -11,6 +11,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { useT } from '../../../store/locale'
 import { COUNTRIES } from '../../../data/countries'
+import PaymentMethodsSection from '../../../components/PaymentMethodsSection'
 
 export default function ProfilePage() {
   const t = useT()
@@ -190,6 +191,8 @@ export default function ProfilePage() {
           </div>
         </form>
       </section>
+
+      <PaymentMethodsSection />
     </div>
   )
 }
