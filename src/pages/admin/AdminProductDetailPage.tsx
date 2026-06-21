@@ -82,9 +82,24 @@ export default function AdminProductDetailPage() {
   }
   // Product images: add by URL and remove.
   const [newImgUrl, setNewImgUrl] = useState('')
+  // Añade VARIAS imágenes a la vez: una por línea o separadas por coma/espacios. Se suben en secuencia
+  // (preserva el orden) y se reportan los fallos parciales sin perder las que sí entraron.
   const addImgMut = useMutation({
-    mutationFn: (url: string) => admin.addProductImage(id, url),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-product', id] }); setNewImgUrl('') },
+    mutationFn: async (urls: string[]) => {
+      let ok = 0
+      const failed: string[] = []
+      for (const u of urls) {
+        try { await admin.addProductImage(id, u); ok++ } catch { failed.push(u) }
+      }
+      return { ok, failed }
+    },
+    onSuccess: ({ ok, failed }: { ok: number; failed: string[] }) => {
+      qc.invalidateQueries({ queryKey: ['admin-product', id] })
+      setNewImgUrl('')
+      if (failed.length) {
+        dialog.alert({ variant: 'error', message: t('admin.catalog.images.partial').replace('{ok}', String(ok)).replace('{fail}', String(failed.length)) })
+      }
+    },
     onError: (e: any) => dialog.alert({ variant: 'error', message: e?.response?.data?.message ?? t('admin.catalog.images.error') }),
   })
   const delImgMut = useMutation({
@@ -258,16 +273,20 @@ export default function AdminProductDetailPage() {
                 <span className="text-[12px]">{t('admin.catalog.detail.gallery_empty')}</span>
               </div>
             )}
-            {/* Add image: paste a URL */}
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-ink-100">
-              <input value={newImgUrl} onChange={(e) => setNewImgUrl(e.target.value)}
-                     placeholder={t('admin.catalog.images.url_ph')}
-                     className="input input-bordered input-sm flex-1 text-[12px]" />
-              <button onClick={() => newImgUrl.trim() && addImgMut.mutate(newImgUrl.trim())}
-                      disabled={!newImgUrl.trim() || addImgMut.isPending}
-                      className="btn btn-outline btn-sm text-[12px]">
-                <FontAwesomeIcon icon={faPlus} /> {t('admin.catalog.images.add_url')}
-              </button>
+            {/* Add images: paste one or MANY URLs (one per line or comma/space-separated) */}
+            <div className="mt-3 pt-3 border-t border-ink-100">
+              <textarea value={newImgUrl} onChange={(e) => setNewImgUrl(e.target.value)}
+                        placeholder={t('admin.catalog.images.url_ph')} rows={3}
+                        className="textarea textarea-bordered w-full text-[12px] leading-snug" />
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-[11px] text-ink-400">{t('admin.catalog.images.multi_hint')}</span>
+                <button onClick={() => { const urls = parseImageUrls(newImgUrl); if (urls.length) addImgMut.mutate(urls) }}
+                        disabled={parseImageUrls(newImgUrl).length === 0 || addImgMut.isPending}
+                        className="btn btn-outline btn-sm text-[12px]">
+                  <FontAwesomeIcon icon={faPlus} /> {t('admin.catalog.images.add_url')}
+                  {parseImageUrls(newImgUrl).length > 1 ? ` (${parseImageUrls(newImgUrl).length})` : ''}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -572,4 +591,10 @@ function translateOptions(title: string, lang: string) {
 function normalizeSlug(slug?: string | null): string {
   if (!slug) return '—'
   return slug.replace(/^[-_/]+/, '').replace(/[-_/]+$/, '')
+}
+
+// Extrae todas las URLs http(s) de un texto: una por línea, o separadas por coma/espacios. Deduplica.
+function parseImageUrls(raw: string): string[] {
+  const urls = raw.split(/[\s,]+/).map((s) => s.trim()).filter((s) => /^https?:\/\//i.test(s))
+  return Array.from(new Set(urls))
 }
