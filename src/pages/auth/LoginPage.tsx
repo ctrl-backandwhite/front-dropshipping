@@ -163,7 +163,12 @@ export default function LoginPage() {
 
           {/* SSO row — DROP-247 */}
           <div className="mt-6 grid grid-cols-3 gap-2">
-            <SsoButton provider="google" icon={faGoogle} onClick={() => { window.location.href = `${API_BASE}/oauth2/authorization/google` }} />
+            <SsoButton provider="google" icon={faGoogle} onClick={() => {
+              // El `state` de react-router no sobrevive al redirect OAuth, así que
+              // guardamos el destino pretendido (p.ej. /checkout) para que el callback lo honre.
+              if (from && from.startsWith('/') && !from.startsWith('//')) sessionStorage.setItem('nx-login-from', from)
+              window.location.href = `${API_BASE}/oauth2/authorization/google`
+            }} />
             <SsoButton provider="github" icon={faGithub} onClick={() => dialog.alert(t('login.sso_soon'))} />
             <SsoButton provider="apple"  icon={faApple}  onClick={() => dialog.alert(t('login.sso_soon'))} />
           </div>

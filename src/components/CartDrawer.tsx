@@ -78,6 +78,14 @@ export function CartDrawer() {
                   <div className="flex-1 min-w-0">
                     <Link to={`/catalog/${l.slug}`} onClick={onClose}
                           className="text-[13px] font-medium line-clamp-2 hover:text-primary">{l.title}</Link>
+                    {/* Variante seleccionada (color / talla) + SKU, visible en el carrito. */}
+                    {(l.variantLabel || l.sku) && (
+                      <div className="text-[11px] opacity-60 mt-0.5 truncate">
+                        {l.variantLabel}
+                        {l.variantLabel && l.sku ? ' · ' : ''}
+                        {l.sku ? `SKU ${l.sku}` : ''}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between mt-1.5">
                       <div className="join">
                         <button onClick={() => setQty(l.productId, l.variantId, l.quantity - 1)}

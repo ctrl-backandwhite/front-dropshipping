@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, useRef, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCartStore } from '../../../store/cart'
@@ -78,7 +78,8 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null)
   // DROP-442: método de pago elegible
   type PayMethod = 'WALLET' | 'CARD' | 'PAYPAL' | 'USDT'
-  const [payMethod, setPayMethod] = useState<PayMethod>('WALLET')
+  // Orden y preselección: Tarjeta primero (luego PayPal, Wallet, USDT).
+  const [payMethod, setPayMethod] = useState<PayMethod>('CARD')
   const [paymentResult, setPaymentResult] = useState<any>(null)
   // DROP-551: estado del form de tarjeta. Stripe en mock-mode acepta cualquier
   // input válido; en modo real (STRIPE_ENABLED=true) se confirma vía Stripe.js
@@ -99,6 +100,12 @@ export default function CheckoutPage() {
     const def = addrList.find((a) => a.default) ?? addrList[0]
     setSelectedAddressId(def.id)
   }, [addrList, addrLoading, addrError, selectedAddressId])
+
+  // Anti multi-submit: el `disabled` por estado (isPending) tiene un tick de
+  // retraso, así que un triple-clic rápido podía crear 3 órdenes. Un ref síncrono
+  // bloquea reentradas; `idemRef` mantiene una Idempotency-Key estable por intento.
+  const submittingRef = useRef(false)
+  const idemRef = useRef('')
 
   const placeOrder = useMutation({
     mutationFn: async () => {
@@ -124,7 +131,7 @@ export default function CheckoutPage() {
       } else if (selectedAddressId) {
         body.shippingAddressId = selectedAddressId
       }
-      return orders.checkout(body)
+      return orders.checkout(body, idemRef.current || undefined)
     },
     onSuccess: async (o) => {
       try {
@@ -167,6 +174,8 @@ export default function CheckoutPage() {
       const msg = /insufficient wallet balance/i.test(raw) ? t('checkout.insufficient_long') : raw
       setError(msg)
     },
+    // Tras fallar, liberamos el guard y renovamos la key para permitir un reintento limpio.
+    onSettled: () => { submittingRef.current = false; idemRef.current = '' },
   })
 
   if (lines.length === 0) {
@@ -194,6 +203,11 @@ export default function CheckoutPage() {
 
   function submit(e: FormEvent) {
     e.preventDefault()
+    // Guard síncrono: ignora reentradas mientras hay un envío en curso (evita
+    // que un triple-clic rápido cree varias órdenes antes de que React desactive el botón).
+    if (submittingRef.current || placeOrder.isPending) return
+    submittingRef.current = true
+    if (!idemRef.current) idemRef.current = crypto.randomUUID()
     setError(null)
     placeOrder.mutate()
   }
@@ -287,6 +301,8 @@ export default function CheckoutPage() {
                   : <div className="w-14 h-14 rounded bg-ink-100 flex items-center justify-center text-ink-400 text-xs">—</div>}
                 <div className="flex-1 min-w-0">
                   <div className="font-medium line-clamp-1">{l.title}</div>
+                  {/* Variante seleccionada (color / talla) visible en el checkout. */}
+                  {l.variantLabel && <div className="text-xs text-ink-500">{l.variantLabel}</div>}
                   <div className="text-xs text-ink-500">{l.quantity} × {unitText(l)}</div>
                 </div>
                 <div className="text-sm font-medium">{lineTotalText(l)}</div>
@@ -330,9 +346,9 @@ export default function CheckoutPage() {
             <div className="text-xs font-medium opacity-70">{t('checkout.payment_method')}</div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               {([
-                { id: 'WALLET', icon: faWallet,     label: t('checkout.pay_wallet') },
                 { id: 'CARD',   icon: faCreditCard, label: t('checkout.pay_card') },
                 { id: 'PAYPAL', icon: faPaypal,     label: 'PayPal' },
+                { id: 'WALLET', icon: faWallet,     label: t('checkout.pay_wallet') },
                 { id: 'USDT',   icon: faBitcoin,    label: 'USDT' },
               ] as const).map((m) => (
                 <button key={m.id} type="button" onClick={() => setPayMethod(m.id)}

@@ -11,6 +11,7 @@ import { useT } from '../../store/locale'
 import { Reveal } from '../../components/Motion'
 import { useQuery } from '@tanstack/react-query'
 import { warehouseApi } from '../../api/platform'
+import { useAuthStore } from '../../store/auth'
 
 export default function HomePage() {
   // DROP-501: contador real de warehouses sincronizado con /admin/warehouses.
@@ -18,6 +19,9 @@ export default function HomePage() {
   // DROP-689: el conteo es el REAL del backend (sin inventar un número si hay 0).
   const warehousesCount = warehouses.length
   const t = useT()
+  // Si la sesión está iniciada, los CTAs de "Registrarme" no tienen sentido:
+  // se sustituyen por accesos útiles (catálogo) y se ocultan los de alta.
+  const user = useAuthStore((s) => s.user)
   return (
     <div className="space-y-20">
       {/* Hero — DROP-232 / DROP-305 / DROP-385 hero pastel + blobs */}
@@ -47,9 +51,15 @@ export default function HomePage() {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/register" className="btn btn-primary">
-              {t('home.hero.cta_register')} <FontAwesomeIcon icon={faArrowRight} />
-            </Link>
+            {user ? (
+              <Link to="/catalog" className="btn btn-primary">
+                {t('nav.catalog')} <FontAwesomeIcon icon={faArrowRight} />
+              </Link>
+            ) : (
+              <Link to="/register" className="btn btn-primary">
+                {t('home.hero.cta_register')} <FontAwesomeIcon icon={faArrowRight} />
+              </Link>
+            )}
             <Link to="/pricing" className="btn btn-outline">
               {t('home.hero.cta_pricing')}
             </Link>
@@ -108,9 +118,15 @@ export default function HomePage() {
             <h2 className="text-2xl md:text-3xl font-medium tracking-tight">{t('home.cta.title')}</h2>
             <p className="mt-3 opacity-90">{t('home.cta.body')}</p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Link to="/register" className="btn btn-secondary">
-                {t('home.cta.signup')}
-              </Link>
+              {user ? (
+                <Link to="/catalog" className="btn btn-secondary">
+                  {t('nav.catalog')}
+                </Link>
+              ) : (
+                <Link to="/register" className="btn btn-secondary">
+                  {t('home.cta.signup')}
+                </Link>
+              )}
               <Link to="/developers" className="btn btn-outline border-primary-content/40 text-primary-content hover:bg-primary-content/10">
                 {t('home.cta.docs')}
               </Link>

@@ -240,6 +240,7 @@ export default function AdminOrderDetailPage() {
               <tr key={it.id} className="border-t border-ink-100">
                 <td className="px-4 py-2">
                   <span>{it.title ?? it.sku ?? '—'}</span>
+                  {it.variantName && <span className="block text-[11px] text-ink-500">{it.variantName}</span>}
                   {/* DROP: URL de la ficha original del producto, para que el operador la abra al procesar. */}
                   {it.productSourceUrl && (
                     <a href={it.productSourceUrl} target="_blank" rel="noopener noreferrer"
