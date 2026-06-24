@@ -117,6 +117,7 @@ export default function ProductDetailPage() {
   const openCartDrawer = useCartStore((s) => s.openDrawer)
   // Solo ADMIN ve el estimado de margen/ganancia. OPERATOR (soporte) y USER no.
   const isAdmin = useAuthStore((s) => s.user?.role === 'ADMIN')
+  const isAuthed = useAuthStore((s) => !!s.user)
   const currencies = useCurrencyStore((s) => s.currencies)
   const currencyCode = useCurrencyStore((s) => s.current)
   const format = useCurrencyStore((s) => s.format)
@@ -372,7 +373,10 @@ export default function ProductDetailPage() {
     return true
   }
 
-  function orderNow() { if (addAll()) navigate('/checkout') }
+  // "Comprar ahora": si hay sesión, va directo al checkout. Si NO la hay, NO forzamos
+  // el login aquí (eso desconcierta a quien solo está llenando el carrito): lo llevamos
+  // al carrito y el login solo aparecerá cuando pulse checkout desde ahí.
+  function orderNow() { if (addAll()) navigate(isAuthed ? '/checkout' : '/cart') }
   function dropship() {
     // DROP-349: dropship = añadir al carrito + redirigir al wizard de import en /admin.
     if (addAll()) navigate(`/admin/catalog?focus=${product.id}`)
