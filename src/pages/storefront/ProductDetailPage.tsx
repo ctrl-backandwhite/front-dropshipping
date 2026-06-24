@@ -4,7 +4,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ComponentTyp
 import { createPortal } from 'react-dom'
 import { getProduct, getProductAttributes, getProductSpecifications, listStorefrontProducts, listReviews, createReview } from '../../api/catalog'
 import { useLocaleStore } from '../../store/locale'
-import { translateVariantCN } from '../../i18n/colorTerms'
+import { translateVariantCN, colorToCss } from '../../i18n/colorTerms'
 import { useCartStore } from '../../store/cart'
 import { useCurrencyStore } from '../../store/currency'
 import { useAuthStore } from '../../store/auth'
@@ -834,10 +834,14 @@ function ColorSwatches({ option, active, onPick, t }: {
         {values.map((v) => {
           const label = resolveLabel(v)
           const sel = active === label
+          // Borde de 2 px con el color real de la variante (fallback gris si no se
+          // reconoce el color); la selección se marca con el ring primario.
+          const swatchColor = colorToCss(label)
           return (
             <button key={v.id} type="button" onClick={() => onPick(label, v.imageUrl)}
                     title={label}
-                    className={`w-12 h-12 rounded-lg border overflow-hidden relative transition-transform ${sel ? 'border-primary ring-2 ring-primary/30 scale-105' : 'border-base-200 hover:border-base-content/30'}`}>
+                    style={{ borderColor: swatchColor ?? '#d1d5db' }}
+                    className={`w-12 h-12 rounded-lg border-2 overflow-hidden relative transition-transform ${sel ? 'ring-2 ring-primary/50 ring-offset-1 scale-105' : 'hover:scale-105'}`}>
               {v.imageUrl
                 ? <img src={v.imageUrl} alt={label} loading="lazy" className="w-full h-full object-cover" />
                 : <span className="flex items-center justify-center w-full h-full text-[10px] px-1 text-center">{label}</span>}
