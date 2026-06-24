@@ -351,6 +351,10 @@ export default function ProductDetailPage() {
     } else {
       pushLine(singleQty, variantFor(activeColor))
     }
+    // Tras añadir, reseteamos las cantidades para que la SIGUIENTE variante
+    // (p. ej. otro color del mismo producto) empiece en 0 y no arrastre lo ya añadido.
+    setQtyBySize({})
+    setSingleQty(product.moq && product.moq > 1 ? product.moq : 1)
     setAdded(true)
     // DROP-637: efecto "volar al carrito" desde la imagen principal; el drawer se abre tras el vuelo
     // (~650ms) para que la animación sea visible antes de que el panel cubra la barra.
