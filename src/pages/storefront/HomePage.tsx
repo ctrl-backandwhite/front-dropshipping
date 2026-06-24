@@ -12,12 +12,45 @@ import { Reveal } from '../../components/Motion'
 import { useQuery } from '@tanstack/react-query'
 import { warehouseApi } from '../../api/platform'
 import { useAuthStore } from '../../store/auth'
+import { api } from '../../api/client'
+import { listStorefrontProducts, listCategories } from '../../api/catalog'
 
 export default function HomePage() {
   // DROP-501: contador real de warehouses sincronizado con /admin/warehouses.
   const { data: warehouses = [] } = useQuery({ queryKey: ['warehouses-count'], queryFn: warehouseApi.list, staleTime: 5 * 60_000 })
   // DROP-689: el conteo es el REAL del backend (sin inventar un número si hay 0).
   const warehousesCount = warehouses.length
+  // Conteos reales y DINÁMICOS para el mensaje del hero y el stat de idiomas:
+  // idiomas activos del storefront y monedas activas de la plataforma. Suben/bajan
+  // solos al activar/desactivar idiomas o monedas en el admin.
+  const { data: storeLangs = [] } = useQuery({
+    queryKey: ['store-languages'],
+    queryFn: () => api.get('/storefront/languages').then((r) => r.data as { code: string }[]),
+    staleTime: 5 * 60_000,
+  })
+  const { data: activeCurrencies = [] } = useQuery({
+    queryKey: ['store-currencies-active'],
+    queryFn: () => api.get('/storefront/currency/rates').then((r) => r.data as { code: string }[]),
+    staleTime: 5 * 60_000,
+  })
+  const langCount = storeLangs.length || 8
+  const currencyCount = activeCurrencies.length || 12
+  // Nº REAL de productos del catálogo (totalElements de la 1ª página) y de
+  // categorías raíz — sin mocks; reflejan lo que hay publicado en el backend.
+  const { data: productPage } = useQuery({
+    queryKey: ['home-products-total'],
+    queryFn: () => listStorefrontProducts(0, 1),
+    staleTime: 5 * 60_000,
+  })
+  const productCount = productPage?.totalElements ?? 0
+  const { data: rootCategories = [] } = useQuery({
+    queryKey: ['home-root-categories'],
+    queryFn: () => listCategories(),
+    staleTime: 5 * 60_000,
+  })
+  const categoryCount = rootCategories.length
+  // Lista de códigos de idioma ACTIVOS para la tarjeta "auto-traducidos en …".
+  const langCodes = (storeLangs.length ? storeLangs.map((l) => l.code) : ['es', 'en', 'pt', 'zh', 'fr', 'de', 'it', 'nl']).join(' / ')
   const t = useT()
   // Si la sesión está iniciada, los CTAs de "Registrarme" no tienen sentido:
   // se sustituyen por accesos útiles (catálogo) y se ocultan los de alta.
@@ -47,7 +80,7 @@ export default function HomePage() {
           </h1>
 
           <p className="mt-5 text-lg opacity-80 max-w-2xl mx-auto leading-relaxed">
-            {t('home.hero.body')}
+            {t('home.hero.body').replace('{langs}', String(langCount)).replace('{currencies}', String(currencyCount))}
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -88,7 +121,9 @@ export default function HomePage() {
               <span className={`kpi-icon ${c.tone}`} style={{ width: '3.25rem', height: '3.25rem' }}>
                 <FontAwesomeIcon icon={c.icon} className="text-xl" />
               </span>
-              <p className="mt-2 text-[14px] leading-relaxed">{t(c.key)}</p>
+              <p className="mt-2 text-[14px] leading-relaxed">
+                {c.key === 'home.feature.translate' ? t(c.key).replace('{langCodes}', langCodes) : t(c.key)}
+              </p>
             </div>
           </div>
         ))}
@@ -100,10 +135,10 @@ export default function HomePage() {
           números hardcoded contradecían la vista /admin/warehouses. */}
       <Reveal delay={0.05}><section>
         <div className="stats stats-vertical sm:stats-horizontal shadow w-full bg-base-100">
-          <Stat value="50k+" labelKey="home.stat.products" icon={faCubesStacked} />
-          <Stat value="14"  labelKey="home.stat.categories" icon={faChartLine} />
+          <Stat value={productCount ? productCount.toLocaleString() : '…'} labelKey="home.stat.products" icon={faCubesStacked} />
+          <Stat value={categoryCount ? String(categoryCount) : '…'} labelKey="home.stat.categories" icon={faChartLine} />
           <Stat value={String(warehousesCount)} labelKey="home.stat.warehouses" icon={faGlobe} />
-          <Stat value="8"   labelKey="home.stat.languages"  icon={faBolt} />
+          <Stat value={String(langCount)} labelKey="home.stat.languages"  icon={faBolt} />
         </div>
       </section></Reveal>
 
