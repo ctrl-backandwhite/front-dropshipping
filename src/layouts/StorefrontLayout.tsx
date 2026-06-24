@@ -1,7 +1,7 @@
 import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faTag, faCircleNodes, faCode, faSignInAlt, faGauge,
+  faTag, faCircleNodes, faCode, faSignInAlt, faGauge, faHouse,
   faRightFromBracket, faBars, faXmark,
   faUser, faReceipt, faWallet, faLocationDot, faIdCard, faStore, faHandshake, faCartShopping,
 } from '@fortawesome/free-solid-svg-icons'
@@ -49,9 +49,10 @@ export default function StorefrontLayout() {
   // El catálogo completo es interno (requiere login): solo se ofrece a usuarios autenticados.
   // Anónimo ve precios + developers (y el teaser del home).
   const navItems = [
-    ...(user ? [{ to: '/catalog', label: t('nav.catalog'), icon: faStore }] : []),
-    { to: '/pricing',     label: t('nav.pricing'),    icon: faTag },
-    { to: '/developers',  label: t('nav.developers'), icon: faCode },
+    { to: '/',            label: t('nav.home'),       icon: faHouse, end: true },
+    ...(user ? [{ to: '/catalog', label: t('nav.catalog'), icon: faStore, end: false }] : []),
+    { to: '/pricing',     label: t('nav.pricing'),    icon: faTag,  end: false },
+    { to: '/developers',  label: t('nav.developers'), icon: faCode, end: false },
   ]
 
   return (
@@ -71,6 +72,7 @@ export default function StorefrontLayout() {
               <li key={n.to}>
                 <NavLink
                   to={n.to}
+                  end={n.end}
                   className={({ isActive }) =>
                     `flex items-center gap-1.5 ${isActive ? 'menu-active font-medium' : ''}`
                   }
@@ -152,7 +154,7 @@ export default function StorefrontLayout() {
             <ul className="menu menu-sm flex-1 overflow-y-auto p-2 gap-0.5 text-sm">
               {navItems.map((n) => (
                 <li key={n.to}>
-                  <NavLink to={n.to}
+                  <NavLink to={n.to} end={n.end}
                     className={({ isActive }) => isActive ? 'menu-active font-medium' : ''}>
                     <FontAwesomeIcon icon={n.icon} className="w-4 text-center" /> {n.label}
                   </NavLink>
