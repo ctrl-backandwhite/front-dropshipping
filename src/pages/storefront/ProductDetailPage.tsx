@@ -821,12 +821,18 @@ function ColorSwatches({ option, active, onPick, t }: {
 }) {
   const locale = useLocaleStore((s) => s.locale)
   const values = option.values ?? []
-  if (values.length === 0) return null
   // La etiqueta visible: traducción del idioma activo (valueLocalized) → override neutral → diccionario
   // CN→idioma (fallback) para no exponer 驼色/墨绿/炭黑 al comprador.
   const resolveLabel = (v: { value?: string; valueLocalized?: string; valueZh: string }) =>
     (v.valueLocalized && v.valueLocalized.trim() !== '') ? v.valueLocalized
       : (v.value && v.value.trim() !== '') ? v.value : translateVariantCN(v.valueZh, locale)
+  // Selecciona el PRIMER color por defecto al cargar la ficha; el usuario puede
+  // cambiarlo después. Solo actúa si aún no hay color elegido (active == null).
+  useEffect(() => {
+    if (active == null && values.length > 0) onPick(resolveLabel(values[0]), values[0].imageUrl)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, values.length])
+  if (values.length === 0) return null
   return (
     <div>
       <div className="text-[12px] opacity-70 mb-1">{tt(t, 'pdp.color', 'Color')}: <strong>{active ?? '—'}</strong></div>
