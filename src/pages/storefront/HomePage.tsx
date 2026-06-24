@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faRocket, faGlobe, faBox, faArrowRight, faPlay, faShieldHalved,
+  faRocket, faGlobe, faBox, faArrowRight, faBookOpen, faShieldHalved,
   faBolt, faChartLine, faCubesStacked,
 } from '@fortawesome/free-solid-svg-icons'
 import { HomeSections } from '../../components/HomeSections'
@@ -69,7 +69,7 @@ export default function HomePage() {
         <div className="hero-content max-w-3xl mx-auto text-center flex-col">
           <div className="badge badge-outline gap-2 bg-base-100/70">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-success" />
-            {t('home.hero.pill')}
+            {t('home.hero.pill').replace('{count}', productCount ? productCount.toLocaleString() : '…')}
           </div>
 
           <h1 className="mt-5 text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight">
@@ -97,7 +97,7 @@ export default function HomePage() {
               {t('home.hero.cta_pricing')}
             </Link>
             <Link to="/developers" className="btn btn-ghost btn-sm">
-              <FontAwesomeIcon icon={faPlay} className="text-[10px]" /> {t('home.hero.cta_demo')}
+              <FontAwesomeIcon icon={faBookOpen} className="text-[10px]" /> {t('home.hero.cta_demo')}
             </Link>
           </div>
 
