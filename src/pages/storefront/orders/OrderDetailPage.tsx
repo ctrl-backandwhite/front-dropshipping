@@ -58,12 +58,14 @@ export default function OrderDetailPage() {
   // La factura es un endpoint protegido: abrirlo como enlace directo no envía el
   // token (va por header, no cookie) y devuelve 401. La descargamos vía el cliente
   // `api` (que añade el Authorization) como blob y disparamos la descarga.
+  const orderId = o.id
+  const orderNumber = o.orderNumber
   async function downloadInvoice() {
-    const res = await api.get(`/me/orders/${o.id}/invoice.pdf`, { params: { lang }, responseType: 'blob' })
+    const res = await api.get(`/me/orders/${orderId}/invoice.pdf`, { params: { lang }, responseType: 'blob' })
     const url = URL.createObjectURL(res.data as Blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${o.orderNumber || 'factura'}.pdf`
+    a.download = `${orderNumber || 'factura'}.pdf`
     document.body.appendChild(a)
     a.click()
     a.remove()
