@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCircleCheck, faTriangleExclamation, faSpinner } from '@fortawesome/free-solid-svg-icons'
 import { api } from '../../../api/client'
 import { useT } from '../../../store/locale'
+import { useCartStore } from '../../../store/cart'
 
 /**
  * Retorno unificado del checkout para pagos por proveedor externo (Stripe Checkout
@@ -17,6 +18,7 @@ export default function CheckoutReturnPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const clearCart = useCartStore((s) => s.clear)
   const provider = params.get('provider') || ''
   const orderId = params.get('orderId') || ''
   const paymentId = params.get('paymentId') || ''
@@ -40,6 +42,9 @@ export default function CheckoutReturnPage() {
     }
     api.post(`/me/orders/${orderId}/payments/${paymentId}/confirm`)
       .then(() => {
+        // Pago confirmado: AHORA sí vaciamos el carrito (no se hizo al redirigir a la
+        // pasarela, para que volver atrás sin pagar conserve los productos).
+        clearCart()
         qc.invalidateQueries({ queryKey: ['orders'] })
         qc.invalidateQueries({ queryKey: ['wallet'] })
         setState('ok')
@@ -49,7 +54,7 @@ export default function CheckoutReturnPage() {
         setState('error')
         setError(e?.response?.data?.message ?? e?.message ?? t('checkout.return.err'))
       })
-  }, [orderId, paymentId, cancelled, navigate, qc, t])
+  }, [orderId, paymentId, cancelled, navigate, qc, t, clearCart])
 
   return (
     <div className="max-w-md mx-auto card p-8 text-center">

@@ -139,11 +139,16 @@ export default function CheckoutPage() {
         const res = await api.post(`/me/orders/${o.id}/payment-intent`, { method: payMethod },
           { headers: { 'Idempotency-Key': `checkout-${o.id}-${payMethod}` } })
         setPaymentResult(res.data)
-        clear()
+        // OJO: NO vaciamos el carrito aquí. Para CARD/PAYPAL el pago ocurre en la
+        // pasarela externa y el usuario puede volver atrás SIN pagar; si vaciáramos
+        // ahora, al volver vería "Nada para checkout". El carrito se vacía solo cuando
+        // el pago se CONFIRMA: WALLET / confirm directo (abajo), USDT confirmado, o en
+        // /checkout/return tras el retorno del proveedor.
         qc.invalidateQueries({ queryKey: ['wallet'] })
         qc.invalidateQueries({ queryKey: ['orders'] })
 
         if (payMethod === 'WALLET') {
+          clear()
           navigate(`/orders/${o.id}?placed=1`)
           return
         }
@@ -157,6 +162,7 @@ export default function CheckoutPage() {
           if (url) { navigate(url.replace(/^.*\/checkout\/return/, '/checkout/return')); return }
           // Fallback sin URL: confirmamos directo contra el proveedor.
           await api.post(`/me/orders/${o.id}/payments/${res.data.id}/confirm`)
+          clear()
           navigate(`/orders/${o.id}?placed=1&paid=1`)
           return
         }
@@ -178,7 +184,7 @@ export default function CheckoutPage() {
     onSettled: () => { submittingRef.current = false; idemRef.current = '' },
   })
 
-  if (lines.length === 0) {
+  if (lines.length === 0 && !paymentResult) {
     return (
       <div className="max-w-2xl mx-auto card p-10 text-center">
         <h1>{t('checkout.empty.title')}</h1>
@@ -412,6 +418,7 @@ export default function CheckoutPage() {
                       onClick={async () => {
                         try {
                           await api.post(`/me/orders/${paymentResult.orderId}/payments/${paymentResult.id}/confirm-mock`)
+                          clear()
                           navigate(`/orders/${paymentResult.orderId}?placed=1&paid=1`)
                         } catch (e: any) {
                           setError(e?.response?.data?.message ?? e?.message ?? 'USDT confirm failed')
