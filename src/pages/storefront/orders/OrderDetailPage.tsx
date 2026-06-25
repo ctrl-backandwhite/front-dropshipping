@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { orders } from '../../../api/orders'
+import { api } from '../../../api/client'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCheck, faTruck, faBoxOpen, faMoneyBillTransfer, faHouseChimneyUser, faCircleCheck, faCircle,
@@ -54,6 +55,21 @@ export default function OrderDetailPage() {
   const idx = activeIndex(o.status, o)
   const isCancelled = o.status === 'CANCELLED' || o.status === 'REFUNDED'
 
+  // La factura es un endpoint protegido: abrirlo como enlace directo no envía el
+  // token (va por header, no cookie) y devuelve 401. La descargamos vía el cliente
+  // `api` (que añade el Authorization) como blob y disparamos la descarga.
+  async function downloadInvoice() {
+    const res = await api.get(`/me/orders/${o.id}/invoice.pdf`, { params: { lang }, responseType: 'blob' })
+    const url = URL.createObjectURL(res.data as Blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${o.orderNumber || 'factura'}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-5">
       {placed && (
@@ -74,8 +90,8 @@ export default function OrderDetailPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {!['PENDING', 'AWAITING_PAYMENT', 'CANCELLED'].includes(o.status) && (
-            <a href={`/api/me/orders/${o.id}/invoice.pdf?lang=${lang}`} target="_blank" rel="noopener noreferrer"
-               className="btn btn-outline text-sm">{t('order.detail.download_invoice')}</a>
+            <button type="button" onClick={downloadInvoice}
+               className="btn btn-outline text-sm">{t('order.detail.download_invoice')}</button>
           )}
           <Link to="/orders" className="btn btn-outline text-sm">← {t('order.detail.back')}</Link>
         </div>
