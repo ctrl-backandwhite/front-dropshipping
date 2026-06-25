@@ -138,14 +138,6 @@ export default function LoginPage() {
           <h1 className="text-2xl font-semibold">{t('login.title')}</h1>
           <p className="text-sm opacity-70 mt-1">{t('login.subtitle')}</p>
 
-          {/* DROP-405/413: indica claramente cuándo se llegó aquí por una redirección. */}
-          {location.state?.from && (
-            <div role="alert" className="alert alert-info mt-4 py-2 text-[13px]">
-              <FontAwesomeIcon icon={faShield} />
-              <span>{t('login.redirect_required')}{' '}<code className="font-mono text-[12px]">{location.state.from}</code></span>
-            </div>
-          )}
-
           {/* Avisos del flujo de login con Google (vinculación / email no verificado). */}
           {googleNotice && (
             <div role="alert" className={`alert mt-4 py-2 text-[13px] ${linkRequired ? 'alert-warning' : 'alert-error'}`}>
