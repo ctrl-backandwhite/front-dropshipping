@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, FormEvent } from 'react'
+import { useState, useEffect, useRef, useMemo, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCartStore } from '../../../store/cart'
@@ -106,6 +106,15 @@ export default function CheckoutPage() {
   // bloquea reentradas; `idemRef` mantiene una Idempotency-Key estable por intento.
   const submittingRef = useRef(false)
   const idemRef = useRef('')
+  // Idempotency-Key ESTABLE por contenido del carrito: si el usuario abandona la
+  // pasarela y reintenta el mismo carrito, el backend reutiliza la orden sin pagar en
+  // vez de crear un duplicado. Cambia solo si cambia el carrito (productos/qty).
+  const cartIdem = useMemo(() => {
+    const sig = lines.map((l) => `${l.productId}:${l.variantId ?? ''}:${l.quantity}`).sort().join('|')
+    let h = 0
+    for (let i = 0; i < sig.length; i++) h = (h * 31 + sig.charCodeAt(i)) | 0
+    return `cart-${(h >>> 0).toString(36)}-${lines.length}`
+  }, [lines])
 
   const placeOrder = useMutation({
     mutationFn: async () => {
@@ -181,7 +190,9 @@ export default function CheckoutPage() {
       setError(msg)
     },
     // Tras fallar, liberamos el guard y renovamos la key para permitir un reintento limpio.
-    onSettled: () => { submittingRef.current = false; idemRef.current = '' },
+    // Solo liberamos el guard de reentrada; el idem se mantiene estable por carrito
+    // (lo recalcula submit() desde cartIdem) para que un reintento reutilice la orden.
+    onSettled: () => { submittingRef.current = false },
   })
 
   if (lines.length === 0 && !paymentResult) {
@@ -213,7 +224,7 @@ export default function CheckoutPage() {
     // que un triple-clic rápido cree varias órdenes antes de que React desactive el botón).
     if (submittingRef.current || placeOrder.isPending) return
     submittingRef.current = true
-    if (!idemRef.current) idemRef.current = crypto.randomUUID()
+    idemRef.current = cartIdem
     setError(null)
     placeOrder.mutate()
   }
