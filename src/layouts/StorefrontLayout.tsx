@@ -91,7 +91,7 @@ export default function StorefrontLayout() {
           </div>
           <ThemeSwitcher />
           {/* Carrito: visible para cualquier visitante; abre el drawer con el contador de líneas. */}
-          <div id="nx-cart-icon" className="indicator">
+          <div id="nx-cart-icon" className="indicator mr-1.5">
             {cartCount > 0 && (
               <span className="indicator-item badge badge-primary badge-sm">{cartCount > 9 ? '9+' : cartCount}</span>
             )}
