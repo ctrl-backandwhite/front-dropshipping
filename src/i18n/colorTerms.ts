@@ -65,3 +65,54 @@ export function translateVariantCN(zh: string | undefined | null, locale: string
   }
   return zh
 }
+
+// ── Color del swatch ─────────────────────────────────────────────────────────
+// Mapea el NOMBRE de un color (en cualquier idioma del DICT o en chino, y aunque
+// venga con sufijos tipo "855 negro [cuero]" / "Negro · algodón 180g") a un color
+// CSS, para pintar un borde de 2 px con el color real de la variante.
+// Orden IMPORTANTE: los compuestos específicos (navy, verde oscuro, blanco hueso…)
+// van ANTES que los genéricos (azul, verde, blanco) para no quedarse en el genérico.
+const COLOR_CSS: { terms: string[]; css: string }[] = [
+  { css: '#7f1d2d', terms: ['酒红', 'vino tinto', 'vinho', 'bordeaux', 'borgona', 'weinrot', 'wine red', 'wijnrood'] },
+  { css: '#1e3a8a', terms: ['深蓝', 'azul marino', 'azul oscuro', 'navy', 'azul-marinho', 'bleu marine', 'marineblau', 'blu navy', 'marineblauw'] },
+  { css: '#1d4ed8', terms: ['宝蓝', 'azul real', 'royal blue', 'bleu roi', 'konigsblau', 'blu reale'] },
+  { css: '#38bdf8', terms: ['天蓝', 'azul cielo', 'azul claro', 'sky blue', 'light blue', 'azul-celeste', 'bleu ciel', 'himmelblau', 'azzurro', 'celeste'] },
+  { css: '#14532d', terms: ['墨绿', 'verde oscuro', 'dark green', 'verde-escuro', 'vert fonce', 'dunkelgrun', 'verde scuro'] },
+  { css: '#4d5d2b', terms: ['军绿', 'verde militar', 'army green', 'olivgrun', 'oliva', 'olive'] },
+  { css: '#a3a380', terms: ['卡其', 'caqui', 'khaki', 'kaki'] },
+  { css: '#374151', terms: ['炭黑', 'charcoal', 'carbon', 'anthracite', 'anthrazit', 'antracite'] },
+  { css: '#e7dcc3', terms: ['米白', 'blanco hueso', 'off-white', 'off white', 'branco-osso', 'cremeweiss', 'bianco panna'] },
+  { css: '#c19a6b', terms: ['驼色', 'camel', 'camelo', 'cammello'] },
+  { css: '#6f4e37', terms: ['咖啡', 'cafe', 'coffee', 'kaffee', 'caffe', 'koffie'] },
+  { css: '#92400e', terms: ['棕色', 'marron', 'marrom', 'brown', 'braun', 'marrone', 'bruin'] },
+  { css: '#d9c9a3', terms: ['米色', 'beige', 'bege'] },
+  { css: '#111827', terms: ['黑色', 'negro', 'black', 'preto', 'noir', 'schwarz', 'nero', 'zwart'] },
+  { css: '#e5e7eb', terms: ['白色', 'blanco', 'white', 'branco', 'blanc', 'weiss', 'bianco', 'wit'] },
+  { css: '#9ca3af', terms: ['灰色', 'gris', 'grey', 'gray', 'cinza', 'grau', 'grigio', 'grijs'] },
+  { css: '#c0c0c0', terms: ['银色', 'plata', 'plateado', 'silver', 'prata', 'argent', 'silber', 'argento', 'zilver'] },
+  { css: '#d4af37', terms: ['金色', 'dorado', 'oro', 'gold', 'dourado', 'goud', 'oro rosa', 'rose gold'] },
+  { css: '#dc2626', terms: ['红色', 'rojo', 'red', 'vermelho', 'rouge', 'rot', 'rosso', 'rood'] },
+  { css: '#ec4899', terms: ['粉色', 'rosa', 'pink', 'rose', 'roze'] },
+  { css: '#2563eb', terms: ['蓝色', 'azul', 'blue', 'bleu', 'blau', 'blu', 'blauw'] },
+  { css: '#16a34a', terms: ['绿色', 'verde', 'green', 'vert', 'grun', 'groen'] },
+  { css: '#eab308', terms: ['黄色', 'amarillo', 'yellow', 'amarelo', 'jaune', 'gelb', 'giallo', 'geel'] },
+  { css: '#f97316', terms: ['橙色', 'naranja', 'orange', 'laranja', 'arancione', 'oranje'] },
+  { css: '#7c3aed', terms: ['紫色', 'morado', 'purpura', 'purple', 'roxo', 'violet', 'lila', 'viola', 'paars'] },
+]
+
+const stripAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+
+/**
+ * Devuelve un color CSS para el nombre de variante dado (o undefined si no se
+ * reconoce ningún color). Sirve para pintar el borde del swatch con el color real.
+ */
+export function colorToCss(label: string | undefined | null): string | undefined {
+  if (!label) return undefined
+  const s = stripAccents(label.toLowerCase())
+  for (const { terms, css } of COLOR_CSS) {
+    for (const term of terms) {
+      if (s.includes(stripAccents(term))) return css
+    }
+  }
+  return undefined
+}

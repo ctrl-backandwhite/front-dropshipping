@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { admin } from '../../api/admin'
+import { api } from '../../api/client'
 import { useT, useLocaleStore } from '../../store/locale'
 import { useCurrencyStore } from '../../store/currency'
 import { StatusBadge } from './AdminDashboardPage'
@@ -79,6 +80,19 @@ export default function AdminOrderDetailPage() {
 
   const allowed = TRANSITIONS[o.status] ?? []
   const items = o.items ?? []
+
+  // Descarga protegida: vía `api` (con token) como blob; un enlace directo daría 401.
+  async function downloadInvoice() {
+    const res = await api.get(`/admin/orders/${o.id}/invoice.pdf`, { responseType: 'blob' })
+    const url = URL.createObjectURL(res.data as Blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${o.orderNumber || 'factura'}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
   const subtotal = items.reduce((s: number, it: any) => s + (it.lineTotalCents ?? it.unitPriceCents * it.qty), 0) / 100
 
   async function confirmThen(message: string, action: () => void) {
@@ -94,8 +108,8 @@ export default function AdminOrderDetailPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={o.status} />
           {!['PENDING', 'AWAITING_PAYMENT', 'CANCELLED'].includes(o.status) && (
-            <a href={`/api/admin/orders/${o.id}/invoice.pdf`} target="_blank" rel="noopener noreferrer"
-               className="btn btn-outline text-[12px]">{t('order.detail.download_invoice')}</a>
+            <button type="button" onClick={downloadInvoice}
+               className="btn btn-outline text-[12px]">{t('order.detail.download_invoice')}</button>
           )}
           {['FORWARDED', 'SHIPPED', 'DELIVERED'].includes(o.status) && (
             <button onClick={() => syncM.mutate()} disabled={syncM.isPending} className="btn btn-outline text-[12px]">
@@ -240,6 +254,7 @@ export default function AdminOrderDetailPage() {
               <tr key={it.id} className="border-t border-ink-100">
                 <td className="px-4 py-2">
                   <span>{it.title ?? it.sku ?? '—'}</span>
+                  {it.variantName && <span className="block text-[11px] text-ink-500">{it.variantName}</span>}
                   {/* DROP: URL de la ficha original del producto, para que el operador la abra al procesar. */}
                   {it.productSourceUrl && (
                     <a href={it.productSourceUrl} target="_blank" rel="noopener noreferrer"

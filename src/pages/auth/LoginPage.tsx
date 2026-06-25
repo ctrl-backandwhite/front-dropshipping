@@ -136,15 +136,6 @@ export default function LoginPage() {
 
         <div>
           <h1 className="text-2xl font-semibold">{t('login.title')}</h1>
-          <p className="text-sm opacity-70 mt-1">{t('login.subtitle')}</p>
-
-          {/* DROP-405/413: indica claramente cuándo se llegó aquí por una redirección. */}
-          {location.state?.from && (
-            <div role="alert" className="alert alert-info mt-4 py-2 text-[13px]">
-              <FontAwesomeIcon icon={faShield} />
-              <span>{t('login.redirect_required')}{' '}<code className="font-mono text-[12px]">{location.state.from}</code></span>
-            </div>
-          )}
 
           {/* Avisos del flujo de login con Google (vinculación / email no verificado). */}
           {googleNotice && (
@@ -163,7 +154,12 @@ export default function LoginPage() {
 
           {/* SSO row — DROP-247 */}
           <div className="mt-6 grid grid-cols-3 gap-2">
-            <SsoButton provider="google" icon={faGoogle} onClick={() => { window.location.href = `${API_BASE}/oauth2/authorization/google` }} />
+            <SsoButton provider="google" icon={faGoogle} onClick={() => {
+              // El `state` de react-router no sobrevive al redirect OAuth, así que
+              // guardamos el destino pretendido (p.ej. /checkout) para que el callback lo honre.
+              if (from && from.startsWith('/') && !from.startsWith('//')) sessionStorage.setItem('nx-login-from', from)
+              window.location.href = `${API_BASE}/oauth2/authorization/google`
+            }} />
             <SsoButton provider="github" icon={faGithub} onClick={() => dialog.alert(t('login.sso_soon'))} />
             <SsoButton provider="apple"  icon={faApple}  onClick={() => dialog.alert(t('login.sso_soon'))} />
           </div>

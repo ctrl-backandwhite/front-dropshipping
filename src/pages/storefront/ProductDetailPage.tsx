@@ -4,7 +4,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ComponentTyp
 import { createPortal } from 'react-dom'
 import { getProduct, getProductAttributes, getProductSpecifications, listStorefrontProducts, listReviews, createReview } from '../../api/catalog'
 import { useLocaleStore } from '../../store/locale'
-import { translateVariantCN } from '../../i18n/colorTerms'
+import { translateVariantCN, colorToCss } from '../../i18n/colorTerms'
 import { useCartStore } from '../../store/cart'
 import { useCurrencyStore } from '../../store/currency'
 import { useAuthStore } from '../../store/auth'
@@ -117,6 +117,7 @@ export default function ProductDetailPage() {
   const openCartDrawer = useCartStore((s) => s.openDrawer)
   // Solo ADMIN ve el estimado de margen/ganancia. OPERATOR (soporte) y USER no.
   const isAdmin = useAuthStore((s) => s.user?.role === 'ADMIN')
+  const isAuthed = useAuthStore((s) => !!s.user)
   const currencies = useCurrencyStore((s) => s.currencies)
   const currencyCode = useCurrencyStore((s) => s.current)
   const format = useCurrencyStore((s) => s.format)
@@ -351,6 +352,10 @@ export default function ProductDetailPage() {
     } else {
       pushLine(singleQty, variantFor(activeColor))
     }
+    // Tras añadir, reseteamos las cantidades para que la SIGUIENTE variante
+    // (p. ej. otro color del mismo producto) empiece en 0 y no arrastre lo ya añadido.
+    setQtyBySize({})
+    setSingleQty(product.moq && product.moq > 1 ? product.moq : 1)
     setAdded(true)
     // DROP-637: efecto "volar al carrito" desde la imagen principal; el drawer se abre tras el vuelo
     // (~650ms) para que la animación sea visible antes de que el panel cubra la barra.
@@ -368,7 +373,10 @@ export default function ProductDetailPage() {
     return true
   }
 
-  function orderNow() { if (addAll()) navigate('/checkout') }
+  // "Comprar ahora": si hay sesión, va directo al checkout. Si NO la hay, NO forzamos
+  // el login aquí (eso desconcierta a quien solo está llenando el carrito): lo llevamos
+  // al carrito y el login solo aparecerá cuando pulse checkout desde ahí.
+  function orderNow() { if (addAll()) navigate(isAuthed ? '/checkout' : '/cart') }
   function dropship() {
     // DROP-349: dropship = añadir al carrito + redirigir al wizard de import en /admin.
     if (addAll()) navigate(`/admin/catalog?focus=${product.id}`)
@@ -821,12 +829,18 @@ function ColorSwatches({ option, active, onPick, t }: {
 }) {
   const locale = useLocaleStore((s) => s.locale)
   const values = option.values ?? []
-  if (values.length === 0) return null
   // La etiqueta visible: traducción del idioma activo (valueLocalized) → override neutral → diccionario
   // CN→idioma (fallback) para no exponer 驼色/墨绿/炭黑 al comprador.
   const resolveLabel = (v: { value?: string; valueLocalized?: string; valueZh: string }) =>
     (v.valueLocalized && v.valueLocalized.trim() !== '') ? v.valueLocalized
       : (v.value && v.value.trim() !== '') ? v.value : translateVariantCN(v.valueZh, locale)
+  // Selecciona el PRIMER color por defecto al cargar la ficha; el usuario puede
+  // cambiarlo después. Solo actúa si aún no hay color elegido (active == null).
+  useEffect(() => {
+    if (active == null && values.length > 0) onPick(resolveLabel(values[0]), values[0].imageUrl)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, values.length])
+  if (values.length === 0) return null
   return (
     <div>
       <div className="text-[12px] opacity-70 mb-1">{tt(t, 'pdp.color', 'Color')}: <strong>{active ?? '—'}</strong></div>
@@ -834,10 +848,14 @@ function ColorSwatches({ option, active, onPick, t }: {
         {values.map((v) => {
           const label = resolveLabel(v)
           const sel = active === label
+          // Borde de 2 px con el color real de la variante (fallback gris si no se
+          // reconoce el color); la selección se marca con el ring primario.
+          const swatchColor = colorToCss(label)
           return (
             <button key={v.id} type="button" onClick={() => onPick(label, v.imageUrl)}
                     title={label}
-                    className={`w-12 h-12 rounded-lg border overflow-hidden relative transition-transform ${sel ? 'border-primary ring-2 ring-primary/30 scale-105' : 'border-base-200 hover:border-base-content/30'}`}>
+                    style={{ borderColor: swatchColor ?? '#d1d5db' }}
+                    className={`w-12 h-12 rounded-lg border-2 overflow-hidden relative transition-transform ${sel ? 'ring-2 ring-primary/50 ring-offset-1 scale-105' : 'hover:scale-105'}`}>
               {v.imageUrl
                 ? <img src={v.imageUrl} alt={label} loading="lazy" className="w-full h-full object-cover" />
                 : <span className="flex items-center justify-center w-full h-full text-[10px] px-1 text-center">{label}</span>}

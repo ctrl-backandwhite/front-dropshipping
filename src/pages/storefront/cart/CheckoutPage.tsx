@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, useRef, useMemo, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCartStore } from '../../../store/cart'
@@ -78,7 +78,8 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null)
   // DROP-442: método de pago elegible
   type PayMethod = 'WALLET' | 'CARD' | 'PAYPAL' | 'USDT'
-  const [payMethod, setPayMethod] = useState<PayMethod>('WALLET')
+  // Orden y preselección: Tarjeta primero (luego PayPal, Wallet, USDT).
+  const [payMethod, setPayMethod] = useState<PayMethod>('CARD')
   const [paymentResult, setPaymentResult] = useState<any>(null)
   // DROP-551: estado del form de tarjeta. Stripe en mock-mode acepta cualquier
   // input válido; en modo real (STRIPE_ENABLED=true) se confirma vía Stripe.js
@@ -99,6 +100,21 @@ export default function CheckoutPage() {
     const def = addrList.find((a) => a.default) ?? addrList[0]
     setSelectedAddressId(def.id)
   }, [addrList, addrLoading, addrError, selectedAddressId])
+
+  // Anti multi-submit: el `disabled` por estado (isPending) tiene un tick de
+  // retraso, así que un triple-clic rápido podía crear 3 órdenes. Un ref síncrono
+  // bloquea reentradas; `idemRef` mantiene una Idempotency-Key estable por intento.
+  const submittingRef = useRef(false)
+  const idemRef = useRef('')
+  // Idempotency-Key ESTABLE por contenido del carrito: si el usuario abandona la
+  // pasarela y reintenta el mismo carrito, el backend reutiliza la orden sin pagar en
+  // vez de crear un duplicado. Cambia solo si cambia el carrito (productos/qty).
+  const cartIdem = useMemo(() => {
+    const sig = lines.map((l) => `${l.productId}:${l.variantId ?? ''}:${l.quantity}`).sort().join('|')
+    let h = 0
+    for (let i = 0; i < sig.length; i++) h = (h * 31 + sig.charCodeAt(i)) | 0
+    return `cart-${(h >>> 0).toString(36)}-${lines.length}`
+  }, [lines])
 
   const placeOrder = useMutation({
     mutationFn: async () => {
@@ -124,7 +140,7 @@ export default function CheckoutPage() {
       } else if (selectedAddressId) {
         body.shippingAddressId = selectedAddressId
       }
-      return orders.checkout(body)
+      return orders.checkout(body, idemRef.current || undefined)
     },
     onSuccess: async (o) => {
       try {
@@ -132,11 +148,16 @@ export default function CheckoutPage() {
         const res = await api.post(`/me/orders/${o.id}/payment-intent`, { method: payMethod },
           { headers: { 'Idempotency-Key': `checkout-${o.id}-${payMethod}` } })
         setPaymentResult(res.data)
-        clear()
+        // OJO: NO vaciamos el carrito aquí. Para CARD/PAYPAL el pago ocurre en la
+        // pasarela externa y el usuario puede volver atrás SIN pagar; si vaciáramos
+        // ahora, al volver vería "Nada para checkout". El carrito se vacía solo cuando
+        // el pago se CONFIRMA: WALLET / confirm directo (abajo), USDT confirmado, o en
+        // /checkout/return tras el retorno del proveedor.
         qc.invalidateQueries({ queryKey: ['wallet'] })
         qc.invalidateQueries({ queryKey: ['orders'] })
 
         if (payMethod === 'WALLET') {
+          clear()
           navigate(`/orders/${o.id}?placed=1`)
           return
         }
@@ -150,6 +171,7 @@ export default function CheckoutPage() {
           if (url) { navigate(url.replace(/^.*\/checkout\/return/, '/checkout/return')); return }
           // Fallback sin URL: confirmamos directo contra el proveedor.
           await api.post(`/me/orders/${o.id}/payments/${res.data.id}/confirm`)
+          clear()
           navigate(`/orders/${o.id}?placed=1&paid=1`)
           return
         }
@@ -167,9 +189,13 @@ export default function CheckoutPage() {
       const msg = /insufficient wallet balance/i.test(raw) ? t('checkout.insufficient_long') : raw
       setError(msg)
     },
+    // Tras fallar, liberamos el guard y renovamos la key para permitir un reintento limpio.
+    // Solo liberamos el guard de reentrada; el idem se mantiene estable por carrito
+    // (lo recalcula submit() desde cartIdem) para que un reintento reutilice la orden.
+    onSettled: () => { submittingRef.current = false },
   })
 
-  if (lines.length === 0) {
+  if (lines.length === 0 && !paymentResult) {
     return (
       <div className="max-w-2xl mx-auto card p-10 text-center">
         <h1>{t('checkout.empty.title')}</h1>
@@ -194,6 +220,11 @@ export default function CheckoutPage() {
 
   function submit(e: FormEvent) {
     e.preventDefault()
+    // Guard síncrono: ignora reentradas mientras hay un envío en curso (evita
+    // que un triple-clic rápido cree varias órdenes antes de que React desactive el botón).
+    if (submittingRef.current || placeOrder.isPending) return
+    submittingRef.current = true
+    idemRef.current = cartIdem
     setError(null)
     placeOrder.mutate()
   }
@@ -287,6 +318,8 @@ export default function CheckoutPage() {
                   : <div className="w-14 h-14 rounded bg-ink-100 flex items-center justify-center text-ink-400 text-xs">—</div>}
                 <div className="flex-1 min-w-0">
                   <div className="font-medium line-clamp-1">{l.title}</div>
+                  {/* Variante seleccionada (color / talla) visible en el checkout. */}
+                  {l.variantLabel && <div className="text-xs text-ink-500">{l.variantLabel}</div>}
                   <div className="text-xs text-ink-500">{l.quantity} × {unitText(l)}</div>
                 </div>
                 <div className="text-sm font-medium">{lineTotalText(l)}</div>
@@ -330,9 +363,9 @@ export default function CheckoutPage() {
             <div className="text-xs font-medium opacity-70">{t('checkout.payment_method')}</div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               {([
-                { id: 'WALLET', icon: faWallet,     label: t('checkout.pay_wallet') },
                 { id: 'CARD',   icon: faCreditCard, label: t('checkout.pay_card') },
                 { id: 'PAYPAL', icon: faPaypal,     label: 'PayPal' },
+                { id: 'WALLET', icon: faWallet,     label: t('checkout.pay_wallet') },
                 { id: 'USDT',   icon: faBitcoin,    label: 'USDT' },
               ] as const).map((m) => (
                 <button key={m.id} type="button" onClick={() => setPayMethod(m.id)}
@@ -396,6 +429,7 @@ export default function CheckoutPage() {
                       onClick={async () => {
                         try {
                           await api.post(`/me/orders/${paymentResult.orderId}/payments/${paymentResult.id}/confirm-mock`)
+                          clear()
                           navigate(`/orders/${paymentResult.orderId}?placed=1&paid=1`)
                         } catch (e: any) {
                           setError(e?.response?.data?.message ?? e?.message ?? 'USDT confirm failed')

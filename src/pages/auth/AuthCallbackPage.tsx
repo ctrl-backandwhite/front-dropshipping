@@ -35,8 +35,13 @@ export default function AuthCallbackPage() {
 
     authToken.set(token, looksJwt(refresh) ? refresh : undefined)
     fetchMe().finally(() => {
+      // Destino pretendido guardado antes del OAuth (p.ej. /checkout). Si no hay,
+      // fallback por rol: staff → back-office; usuario normal → home.
+      const saved = sessionStorage.getItem('nx-login-from')
+      sessionStorage.removeItem('nx-login-from')
       const role = useAuthStore.getState().user?.role
-      const dest = role === 'ADMIN' || role === 'OPERATOR' ? '/admin' : '/'
+      const fallback = role === 'ADMIN' || role === 'OPERATOR' ? '/admin' : '/'
+      const dest = saved && saved.startsWith('/') && !saved.startsWith('//') && saved !== '/login' ? saved : fallback
       navigate(dest, { replace: true })
     })
   }, [fetchMe, navigate])

@@ -1,27 +1,24 @@
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { listPlans, subscribe, type Plan } from '../../api/billing'
+import { Link } from 'react-router-dom'
+import { listPlans, currentSubscription } from '../../api/billing'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCheck } from '@fortawesome/free-solid-svg-icons'
 import { useT } from '../../store/locale'
-import { useCurrencyStore } from '../../store/currency'
-import { dialog } from '../../store/dialog'
+import { useAuthStore } from '../../store/auth'
 
+/**
+ * Página PÚBLICA de precios (/pricing): cualquiera, logueado o no, ve los precios de cada plan
+ * (ya convertidos a su moneda por el backend). NO se contrata aquí: el CTA lleva a iniciar sesión
+ * o, si ya hay sesión, al perfil, donde vive la contratación (PlanSelectorSection).
+ */
 export default function PlansPage() {
   const t = useT()
-  const format = useCurrencyStore((s) => s.format)
+  const user = useAuthStore((s) => s.user)
   const [period, setPeriod] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY')
   const { data: plans = [] } = useQuery({ queryKey: ['plans'], queryFn: listPlans })
-  const mutation = useMutation({
-    mutationFn: ({ plan }: { plan: Plan }) => subscribe(plan.code, period),
-    onSuccess: (data) => {
-      if (data.checkoutUrl?.startsWith('http')) {
-        window.location.href = data.checkoutUrl
-      } else {
-        dialog.alert(t('plans.subscribed_dev'))
-      }
-    },
-  })
+  // Suscripción vigente solo si hay sesión; sin login la query falla en silencio (retry:false).
+  const { data: current } = useQuery({ queryKey: ['my-subscription'], queryFn: currentSubscription, retry: false, enabled: !!user })
 
   return (
     <div>
@@ -44,8 +41,11 @@ export default function PlansPage() {
       <div className="grid md:grid-cols-4 gap-5">
         {plans.map((plan) => {
           const cents = period === 'MONTHLY' ? plan.priceMonthlyCents : plan.priceYearlyCents
+          const priceFmt = period === 'MONTHLY' ? plan.displayMonthlyFormatted : plan.displayYearlyFormatted
           const isEnterprise = plan.code === 'ENTERPRISE'
           const isPopular = plan.position === 3
+          const isCurrent = current?.planId === plan.id && current?.status === 'ACTIVE'
+          const btnCls = `btn w-full ${isPopular ? 'btn-primary' : 'btn-outline'}`
           return (
             <div key={plan.id} className={`card bg-base-100 ${isPopular ? 'border-2 border-primary shadow-lg' : 'card-border'} relative`}>
               {isPopular && (
@@ -61,7 +61,7 @@ export default function PlansPage() {
                     ? t('plans.custom')
                     : cents === 0
                       ? t('plans.free')
-                      : format(cents / 100, 'USD')}
+                      : (priceFmt ?? '—')}
                   <span className="text-sm opacity-60 ml-1">
                     {cents > 0 && (period === 'MONTHLY' ? t('plans.per_month') : t('plans.per_year'))}
                   </span>
@@ -79,13 +79,17 @@ export default function PlansPage() {
                 </ul>
 
                 <div className="card-actions mt-4">
-                  <button
-                    disabled={mutation.isPending}
-                    onClick={() => mutation.mutate({ plan })}
-                    className={`btn w-full ${isPopular ? 'btn-primary' : 'btn-outline'}`}
-                  >
-                    {isEnterprise ? t('plans.contact_sales') : t('plans.choose')}
-                  </button>
+                  {isEnterprise ? (
+                    <a href="/connect" className={btnCls}>{t('plans.contact_sales')}</a>
+                  ) : isCurrent ? (
+                    <button disabled className="btn w-full btn-success btn-outline">{t('plans.current')}</button>
+                  ) : user ? (
+                    // Sesión iniciada: la contratación vive en el perfil.
+                    <Link to="/profile" className={btnCls}>{t('plans.go_contract')}</Link>
+                  ) : (
+                    // Sin sesión: invitar a entrar para poder contratar.
+                    <Link to="/login" className={btnCls}>{t('plans.login_to_subscribe')}</Link>
+                  )}
                 </div>
               </div>
             </div>
@@ -96,7 +100,7 @@ export default function PlansPage() {
   )
 }
 
-// Fall back to the backend-provided string when no localized key exists.
+// Usa la traducción si existe; si falta la clave, cae al texto que da el backend.
 function localized(t: (k: string) => string, key: string, fallback?: string | null): string {
   const v = t(key)
   return v === key ? (fallback ?? '') : v
