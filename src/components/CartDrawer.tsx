@@ -99,7 +99,7 @@ export function CartDrawer() {
                       </span>
                     </div>
                     <button onClick={() => remove(l.productId, l.variantId)}
-                            className="text-[11px] text-error hover:underline mt-1 inline-flex items-center gap-1">
+                            className="text-[11px] text-red-500 hover:text-red-600 hover:underline mt-1 inline-flex items-center gap-1">
                       <FontAwesomeIcon icon={faTrash} /> {t('cart.remove')}
                     </button>
                   </div>
