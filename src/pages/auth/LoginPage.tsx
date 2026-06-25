@@ -136,7 +136,6 @@ export default function LoginPage() {
 
         <div>
           <h1 className="text-2xl font-semibold">{t('login.title')}</h1>
-          <p className="text-sm opacity-70 mt-1">{t('login.subtitle')}</p>
 
           {/* Avisos del flujo de login con Google (vinculación / email no verificado). */}
           {googleNotice && (
