@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { useQueryClient, useQuery } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCurrencyStore } from '../store/currency'
 import { useLocaleStore } from '../store/locale'
 import { useT } from '../store/locale'
 import { REGIONS, findRegion, Region } from '../i18n/regions'
-import { api } from '../api/client'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faChevronDown, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons'
-
-type StoreLang = { code: string; label: string; flag?: string }
 
 /**
  * Unified region picker: choosing a region sets BOTH the storefront currency and the UI
@@ -27,12 +24,6 @@ export function CurrencyLanguagePicker({ placement = 'down', fullWidth = false }
   const { locale, setLocale } = useLocaleStore()
   const t = useT()
   const queryClient = useQueryClient()
-  // Idiomas configurados (registro). Permite elegir CUALQUIER idioma añadido, sin cambiar la moneda.
-  const { data: storeLangs } = useQuery({
-    queryKey: ['store-languages'],
-    queryFn: () => api.get('/storefront/languages').then((r) => r.data as StoreLang[]),
-    staleTime: 5 * 60_000,
-  })
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const ref = useRef<HTMLDivElement>(null)
@@ -69,16 +60,6 @@ export function CurrencyLanguagePicker({ placement = 'down', fullWidth = false }
       // DROP-462/398: si solo cambió el idioma, invalidamos toda la caché de
       // React Query para que los textos backend (categorías, productos, etc.)
       // se re-traigan con el nuevo Accept-Language.
-      queryClient.invalidateQueries()
-    }
-  }
-
-  function pickLanguage(code: string) {
-    setOpen(false)
-    setQuery('')
-    if (code !== locale) {
-      setLocale(code)
-      // Solo cambia el idioma (no la moneda): re-traer textos del backend con el nuevo idioma.
       queryClient.invalidateQueries()
     }
   }
@@ -136,22 +117,6 @@ export function CurrencyLanguagePicker({ placement = 'down', fullWidth = false }
                 </button>
               )
             })}
-            {/* Idiomas configurados (registro) — elige cualquiera sin cambiar la moneda. */}
-            {storeLangs && storeLangs.length > 0 && (
-              <>
-                <div className="mt-1 border-t border-ink-100 px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-ink-400">{t('picker.language')}</div>
-                {storeLangs.map((l) => (
-                  <button key={l.code} onClick={() => pickLanguage(l.code)}
-                          className={`w-full px-3 py-1.5 text-left text-[12px] flex items-center gap-2 hover:bg-ink-50 ${
-                            l.code === locale ? 'bg-brand-50 text-brand-700' : 'text-ink-700'
-                          }`}>
-                    <span className="text-base leading-none">{l.flag ?? '🏳️'}</span>
-                    <span className="flex-1 truncate">{l.label}</span>
-                    <span className="font-mono text-[11px] text-ink-600 dark:text-ink-300 font-medium">{l.code.toUpperCase()}</span>
-                  </button>
-                ))}
-              </>
-            )}
           </div>
         </div>
       )}
