@@ -86,9 +86,7 @@ export default function StorefrontLayout() {
         </div>
 
         <div className="navbar-end gap-1">
-          <div className="hidden sm:block">
-            <CurrencyLanguagePicker />
-          </div>
+          {/* Orden: modo oscuro · carrito · moneda/idioma · iniciar sesión. */}
           <ThemeSwitcher />
           {/* Carrito: visible para cualquier visitante; abre el drawer con el contador de líneas. */}
           <div id="nx-cart-icon" className="indicator ml-2 mr-5">
@@ -99,6 +97,9 @@ export default function StorefrontLayout() {
                     title={t('nav.cart')} aria-label={t('nav.cart')}>
               <FontAwesomeIcon icon={faCartShopping} />
             </button>
+          </div>
+          <div className="hidden sm:block">
+            <CurrencyLanguagePicker />
           </div>
           {user ? (
             <>
