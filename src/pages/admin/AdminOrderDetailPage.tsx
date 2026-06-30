@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { admin } from '../../api/admin'
 import { api } from '../../api/client'
 import { useT, useLocaleStore } from '../../store/locale'
+import { countryName } from '../../lib/country'
 import { useCurrencyStore } from '../../store/currency'
 import { StatusBadge } from './AdminDashboardPage'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -219,7 +220,7 @@ export default function AdminOrderDetailPage() {
                 {o.shippingAddress.postalCode} {o.shippingAddress.city}
                 {o.shippingAddress.region && `, ${o.shippingAddress.region}`}
               </div>
-              <div className="text-ink-700">{o.shippingAddress.country}</div>
+              <div className="text-ink-700">{countryName(o.shippingAddress.country, lang)}</div>
               {o.shippingAddress.phone && <div className="text-ink-500 text-[12px] mt-1">{o.shippingAddress.phone}</div>}
             </div>
           ) : <div className="text-ink-500 text-[12px]">{t('admin.orders.detail.no_address')}</div>}

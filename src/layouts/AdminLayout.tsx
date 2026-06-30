@@ -207,6 +207,12 @@ export default function AdminLayout() {
               </div>
             </div>
           )}
+          {/* Volver a la tienda: en móvil el botón "Ver sitio" del header está oculto, así que
+              ofrecemos el acceso explícito aquí (el logo también enlaza, pero no es evidente). */}
+          <Link to="/" onClick={() => setOpen(false)} className="btn btn-ghost btn-sm w-full mb-2"
+                title={t('admin.back_to_site')}>
+            <FontAwesomeIcon icon={faStore} /> {t('admin.view_site')}
+          </Link>
           <button onClick={handleLogout} className="btn btn-outline btn-sm w-full">
             <FontAwesomeIcon icon={faRightFromBracket} /> {t('admin.signout')}
           </button>

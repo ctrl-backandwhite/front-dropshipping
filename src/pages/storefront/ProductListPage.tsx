@@ -7,6 +7,7 @@ import {
   listStorefrontProducts, listCategoriesTree, listSuppliers, ProductFilters, ProductSummary, CategoryView,
 } from '../../api/catalog'
 import { ProductCard } from '../../components/ProductCard'
+import { ScrollToTopButton } from '../../components/ScrollToTopButton'
 import { useCurrencyStore } from '../../store/currency'
 import { SearchInput } from '../../components/SearchInput'
 import { FilterBar, SelectFilter, PillToggle, RangeInput } from '../../components/FilterBar'
@@ -138,6 +139,7 @@ export default function ProductListPage() {
 
   return (
     <div className="space-y-5">
+      <ScrollToTopButton />
       {activeCategory && (
         <section className="rounded-xl bg-gradient-to-r from-brand-50 via-white to-amber-50 border border-ink-100 px-6 py-8 lg:px-10 lg:py-10">
           <div className="text-[11px] uppercase tracking-wider text-brand-700 font-medium">{t('catalog.category_hero.label')}</div>

@@ -1,7 +1,8 @@
 import { TrackingView } from '../api/orders'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTruckFast, faLocationDot } from '@fortawesome/free-solid-svg-icons'
-import { useT } from '../store/locale'
+import { useT, useLocaleStore } from '../store/locale'
+import { locationName } from '../lib/country'
 
 /**
  * Timeline de seguimiento del envío (Cainiao): número de seguimiento + entrega estimada + los eventos
@@ -9,6 +10,7 @@ import { useT } from '../store/locale'
  */
 export function TrackingTimeline({ tracking }: { tracking?: TrackingView }) {
   const t = useT()
+  const lang = useLocaleStore((s) => s.locale)
   if (!tracking) return null
   const events = [...(tracking.events ?? [])].reverse()
   if (!tracking.trackingNumber && events.length === 0) return null
@@ -37,7 +39,7 @@ export function TrackingTimeline({ tracking }: { tracking?: TrackingView }) {
               <span className={`absolute -start-[7px] mt-1 w-3.5 h-3.5 rounded-full border-2 border-base-100 ${i === 0 ? 'bg-primary' : 'bg-base-300'}`} />
               <div className="text-sm font-medium">{e.description}</div>
               <div className="text-xs text-ink-500 flex flex-wrap gap-x-2">
-                {e.location && <span><FontAwesomeIcon icon={faLocationDot} className="me-1" />{e.location}</span>}
+                {e.location && <span><FontAwesomeIcon icon={faLocationDot} className="me-1" />{locationName(e.location, lang)}</span>}
                 {e.occurredAt && <span>{new Date(e.occurredAt).toLocaleString()}</span>}
               </div>
             </li>

@@ -56,8 +56,8 @@ export function HomeSections() {
         <h2 className="text-xl mb-3">{t('catalog.home.hot_categories')}</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
           {data.hotCategories.map((c) => (
-            <Link key={c.id} to={`/catalog?categoryId=${c.id}`}
-              className="card p-4 text-center hover:border-brand-300 hover:bg-brand-50 transition-colors">
+            <Link key={c.id} to={`/catalog?categoryId=${c.id}`} data-tip={c.name}
+              className="card p-4 text-center hover:border-brand-300 hover:bg-brand-50 transition-colors tooltip tooltip-bottom">
               <div className="text-[13px] font-medium text-ink-900 line-clamp-1">{c.name}</div>
               <div className="text-[11px] text-ink-500 mt-1">{c.directProductCount} prod.</div>
             </Link>

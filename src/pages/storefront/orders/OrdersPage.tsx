@@ -129,12 +129,12 @@ export default function OrdersPage() {
         <label className="flex items-center gap-1.5 text-xs text-ink-500">
           {t('orders.filter.from')}
           <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)}
-            className="input input-sm w-auto" />
+            className="input input-sm w-35" />
         </label>
         <label className="flex items-center gap-1.5 text-xs text-ink-500">
           {t('orders.filter.to')}
           <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)}
-            className="input input-sm w-auto" />
+            className="input input-sm w-35" />
         </label>
       </FilterBar>
 

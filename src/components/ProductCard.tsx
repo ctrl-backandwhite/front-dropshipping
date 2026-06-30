@@ -2,9 +2,10 @@ import { Link, useLocation } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faStar, faFire, faTruckFast, faShield, faBolt, faCartPlus, faCircleCheck } from '@fortawesome/free-solid-svg-icons'
 import type { ProductSummary } from '../api/catalog'
+import { getProduct } from '../api/catalog'
 import { useCartStore } from '../store/cart'
 import { useCurrencyStore } from '../store/currency'
-import { useT } from '../store/locale'
+import { useT, useLocaleStore } from '../store/locale'
 import { SafeImage } from './Placeholder'
 import { flyToCart } from '../lib/flyToCart'
 import { useState } from 'react'
@@ -14,19 +15,44 @@ export function ProductCard({ product }: { product: ProductSummary }) {
   const location = useLocation()
   const format = useCurrencyStore((s) => s.format)
   const cartAdd = useCartStore((s) => s.add)
+  const locale = useLocaleStore((s) => s.locale)
   // DROP-440: quick-add desde la tarjeta sin abrir el PDP.
   const [justAdded, setJustAdded] = useState(false)
-  function quickAdd(e: React.MouseEvent) {
+  async function quickAdd(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation()
     // DROP-637: efecto visual "volar al carrito" desde el botón con la imagen del producto.
     flyToCart(e.currentTarget as HTMLElement, product.mainImage)
+    // El listado no trae variantes; traemos el detalle para añadir la PRIMERA variante por defecto
+    // (color/talla) — igual que en la ficha — y que el carrito muestre la variante, no solo el producto.
+    let variantId: string | undefined
+    let variantLabel: string | undefined
+    let sku: string | undefined
+    let srcPrice = Number(product.basePrice ?? 0)
+    try {
+      const detail = await getProduct(product.slug, locale)
+      const v = detail.variants?.[0]
+      if (v) {
+        variantId = v.id
+        sku = v.sku ?? undefined
+        variantLabel = v.options
+          ? Object.values(v.options).filter(Boolean).join(' / ') || undefined
+          : undefined
+        if (v.price != null) srcPrice = Number(v.price)
+      }
+    } catch { /* si falla la cotización del detalle, añadimos sin variante (fallback) */ }
     cartAdd({
       productId: product.id,
+      variantId,
+      sku,
+      variantLabel,
       slug: product.slug,
       title: product.title,
       image: product.mainImage,
-      unitPriceSource: Number(product.basePrice ?? 0),
+      unitPriceSource: srcPrice,
       sourceCurrency: product.currency ?? 'USD',
+      // Precio de display de la tarjeta (en moneda activa); el carrito lo re-cotiza en vivo por variante.
+      unitPriceDisplay: product.displayPrice,
+      displayCurrency: product.displayCurrency,
       quantity: 1,
     })
     setJustAdded(true)

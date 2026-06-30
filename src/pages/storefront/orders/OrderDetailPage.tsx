@@ -9,6 +9,7 @@ import {
 import { useT, useLocaleStore } from '../../../store/locale'
 import { useCurrencyStore } from '../../../store/currency'
 import { TrackingTimeline } from '../../../components/TrackingTimeline'
+import { countryName } from '../../../lib/country'
 
 const TIMELINE = [
   { code: 'placed',     labelKey: 'order.detail.timeline.placed',     icon: faMoneyBillTransfer },
@@ -34,6 +35,9 @@ export default function OrderDetailPage() {
   const { id = '' } = useParams()
   const [params] = useSearchParams()
   const placed = params.get('placed') === '1'
+  // `paid=1` lo añaden SOLO los pagos externos (tarjeta/PayPal/USDT); el pago con wallet va a
+  // `?placed=1` sin `paid`. Así el mensaje es coherente: solo se menciona la wallet si se pagó con ella.
+  const paidExternally = params.get('paid') === '1'
 
   const { data: o, isLoading } = useQuery({
     queryKey: ['order', id, lang],
@@ -75,11 +79,15 @@ export default function OrderDetailPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-5">
       {placed && (
-        <div className="card p-4 bg-emerald-50 border-emerald-200 text-emerald-800 flex items-start gap-3">
-          <FontAwesomeIcon icon={faCircleCheck} className="text-2xl mt-0.5" />
-          <div className="text-sm">
-            <div className="font-medium">{t('order.detail.placed_ok')}</div>
-            <div className="text-emerald-700">{t('order.detail.placed_desc')}</div>
+        <div className="card p-4 bg-emerald-50 border-emerald-200 text-emerald-800">
+          <div className="flex items-start gap-3">
+            <FontAwesomeIcon icon={faCircleCheck} className="text-2xl mt-0.5 shrink-0" />
+            <div className="text-sm">
+              <div className="font-medium">{t('order.detail.placed_ok')}</div>
+              <div className="text-emerald-700">
+                {paidExternally ? t('order.detail.placed_desc_paid') : t('order.detail.placed_desc')}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -146,7 +154,7 @@ export default function OrderDetailPage() {
               <div className="font-medium">{o.shippingAddress.fullName}</div>
               <div className="text-ink-600">{o.shippingAddress.line1}{o.shippingAddress.line2 ? `, ${o.shippingAddress.line2}` : ''}</div>
               <div className="text-ink-600">{o.shippingAddress.city}{o.shippingAddress.state ? `, ${o.shippingAddress.state}` : ''} {o.shippingAddress.postalCode}</div>
-              <div className="text-ink-600">{o.shippingAddress.country}</div>
+              <div className="text-ink-600">{countryName(o.shippingAddress.country, lang)}</div>
               {o.shippingAddress.phone && <div className="text-ink-500 text-xs mt-1">{t('checkout.phone')}: {o.shippingAddress.phone}</div>}
             </div>
           ) : <div className="text-sm text-ink-500 mt-1">—</div>}

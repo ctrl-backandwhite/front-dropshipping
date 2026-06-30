@@ -5,6 +5,7 @@ import {
   faBolt, faChartLine, faCubesStacked,
 } from '@fortawesome/free-solid-svg-icons'
 import { HomeSections } from '../../components/HomeSections'
+import { NewsletterSection } from '../../components/NewsletterSection'
 import { ShippingCountriesBanner } from '../../components/ShippingCountriesBanner'
 import { SectionBoundary } from '../../components/ErrorBoundary'
 import { useT } from '../../store/locale'
@@ -169,6 +170,10 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Newsletter en la home: antes solo estaba en el pie y, con el scroll infinito del catálogo,
+          era casi inalcanzable. Aquí queda accesible sin tener que llegar al final de todos los productos. */}
+      <NewsletterSection />
 
       {/* DROP-637: banner giratorio con los países a los que enviamos (cobertura real de Cainiao). */}
       <SectionBoundary fallback={null}><ShippingCountriesBanner /></SectionBoundary>

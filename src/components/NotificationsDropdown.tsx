@@ -78,7 +78,7 @@ export function NotificationsDropdown() {
         <FontAwesomeIcon icon={faBell} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-[95vw] max-w-sm max-h-[70vh] overflow-y-auto card bg-base-100 shadow-pastel-lg border border-base-200 z-50">
+        <div className="fixed top-14 inset-x-2 z-50 sm:inset-x-auto sm:absolute sm:right-0 sm:top-full sm:mt-2 sm:w-96 max-h-[75vh] overflow-y-auto card bg-base-100 shadow-pastel-lg border border-base-200">
           <div className="card-body p-3">
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-sm">{t('admin.notifications.title')}</h3>
