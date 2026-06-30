@@ -8,6 +8,7 @@ import {
   faRoute, faFilterCircleXmark,
 } from '@fortawesome/free-solid-svg-icons'
 import { useT, useLocaleStore } from '../../../store/locale'
+import { useCurrencyStore } from '../../../store/currency'
 import { SearchInput } from '../../../components/SearchInput'
 import { FilterBar, SelectFilter } from '../../../components/FilterBar'
 
@@ -32,6 +33,12 @@ function capitalize(s: string) {
 export default function OrdersPage() {
   const t = useT()
   const locale = useLocaleStore((s) => s.locale)
+  // El total se guarda en céntimos USD (canónico); lo pintamos en la moneda activa, como el
+  // resto de importes (antes salía hardcodeado en "$", incoherente con el selector y el detalle).
+  const format = useCurrencyStore((s) => s.format)
+  const convert = useCurrencyStore((s) => s.convert)
+  const activeCurrency = useCurrencyStore((s) => s.current)
+  const fmtTotal = (cents: number) => format(convert(cents / 100, 'USD'), activeCurrency)
   const { data, isLoading } = useQuery({ queryKey: ['orders'], queryFn: orders.list })
 
   const [q, setQ] = useState('')
@@ -167,7 +174,7 @@ export default function OrdersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">{o.itemCount}</td>
-                    <td className="px-4 py-3 text-right font-medium">${(o.totalCents / 100).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-medium">{o.totalFormatted ?? fmtTotal(o.totalCents)}</td>
                     <td className="px-4 py-3 text-ink-500 text-xs">
                       {o.placedAt ? new Date(o.placedAt).toLocaleString() : '—'}
                     </td>
@@ -201,7 +208,7 @@ export default function OrdersPage() {
                 </div>
                 <div className="mt-1 flex items-center justify-between text-xs text-ink-500">
                   <span>{o.itemCount} {t('orders.items_short')}</span>
-                  <span className="text-ink-900 font-medium">${(o.totalCents / 100).toFixed(2)}</span>
+                  <span className="text-ink-900 font-medium">{o.totalFormatted ?? fmtTotal(o.totalCents)}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between text-[11px] text-ink-500">
                   <span>{o.placedAt ? new Date(o.placedAt).toLocaleString() : '—'}</span>

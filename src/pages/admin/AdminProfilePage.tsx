@@ -17,7 +17,10 @@ const COUNTRY_NAMES: Record<string, Record<string, string>> = {
   pt: { ES: 'Espanha', US: 'Estados Unidos', MX: 'México', BR: 'Brasil', CN: 'China', GB: 'Reino Unido', DE: 'Alemanha', FR: 'França', IT: 'Itália', JP: 'Japão' },
   zh: { ES: '西班牙', US: '美国', MX: '墨西哥', BR: '巴西', CN: '中国', GB: '英国', DE: '德国', FR: '法国', IT: '意大利', JP: '日本' },
 }
-const LANG_NAMES: Record<string, string> = { en: 'English', es: 'Español', pt: 'Português', zh: '中文' }
+const LANG_NAMES: Record<string, string> = {
+  en: 'English', es: 'Español', pt: 'Português', zh: '中文',
+  fr: 'Français', de: 'Deutsch', it: 'Italiano', nl: 'Nederlands',
+}
 
 export default function AdminProfilePage() {
   const t = useT()

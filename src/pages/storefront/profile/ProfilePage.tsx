@@ -120,6 +120,10 @@ export default function ProfilePage() {
               <option value="en">English</option>
               <option value="pt">Português</option>
               <option value="zh">中文</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+              <option value="it">Italiano</option>
+              <option value="nl">Nederlands</option>
             </select>
           </div>
           <div className="sm:col-span-2 flex items-center gap-3">

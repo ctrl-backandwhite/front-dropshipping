@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXmark, faTrash, faCartShopping, faArrowRight, faBoxOpen } from '@fortawesome/free-solid-svg-icons'
@@ -22,6 +22,22 @@ export function CartDrawer() {
   // checkout y a lo que se cobra. El front solo pinta el string del backend; no convierte ni formatea.
   const { lineTotalText, subtotalText } = useCartQuote(lines)
 
+  // Mantener montado durante el cierre para reproducir la animación inversa (mismos 500ms
+  // y easing que la apertura). `render` controla el montaje; `closing` la dirección.
+  const [render, setRender] = useState(open)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => {
+    if (open) {
+      setRender(true)
+      setClosing(false)
+      return
+    }
+    if (!render) return
+    setClosing(true)
+    const id = window.setTimeout(() => { setRender(false); setClosing(false) }, 500)
+    return () => window.clearTimeout(id)
+  }, [open, render])
+
   useEffect(() => {
     if (!open) return
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
@@ -33,13 +49,13 @@ export function CartDrawer() {
     }
   }, [open, onClose])
 
-  if (!open) return null
+  if (!render) return null
 
   return (
     <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label={t('cart.title')}>
-      <div className="absolute inset-0 bg-black/40 animate-[fade-in_500ms_ease-out]" onClick={onClose} />
+      <div className={`absolute inset-0 bg-black/40 ${closing ? 'animate-[fade-out_500ms_ease-out_forwards]' : 'animate-[fade-in_500ms_ease-out]'}`} onClick={onClose} />
       <aside
-        className="absolute right-0 top-0 h-full w-full max-w-md bg-base-100 shadow-xl flex flex-col animate-[slide-in-right_500ms_ease-out]"
+        className={`absolute right-0 top-0 h-full w-full max-w-md bg-base-100 shadow-xl flex flex-col ${closing ? 'animate-[slide-out-right_500ms_ease-out_forwards]' : 'animate-[slide-in-right_500ms_ease-out]'}`}
       >
         <header className="navbar bg-base-100 border-b border-base-200 min-h-14 px-5">
           <h2 className="flex-1 font-medium flex items-center gap-2">

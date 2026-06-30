@@ -43,15 +43,13 @@ export default function CheckoutPage() {
   const subtotalCents = useCartStore((s) => s.subtotalUsdCents())
   const clear = useCartStore((s) => s.clear)
   const format = useCurrencyStore((s) => s.format)
-  const convert = useCurrencyStore((s) => s.convert)
   const navigate = useNavigate()
   const qc = useQueryClient()
 
   // DROP-637: precio EN VIVO re-cotizado y FORMATEADO por el backend (margen + tasa del día) = EXACTAMENTE
   // lo que se factura y se cobra. Mismo hook que el drawer y el carrito → idéntico precio en todas las vistas.
-  // El front solo pinta el string del backend; los importes numéricos (subtotalActive) solo se usan para
-  // sumar el envío en el total estimado.
-  const { unitText, lineTotalText, subtotalText, subtotalActive, activeCurrency } = useCartQuote(lines)
+  // El front solo PINTA los strings ya formateados por el backend (precio, subtotal, envío, IVA y total).
+  const { unitText, lineTotalText, subtotalText, activeCurrency } = useCartQuote(lines)
 
   const { data: addrList, isLoading: addrLoading, isError: addrError } = useQuery({
     queryKey: ['addresses'], queryFn: addresses.list, retry: 1,
@@ -62,17 +60,23 @@ export default function CheckoutPage() {
   const [newAddress, setNewAddress] = useState<AddressInput>(EMPTY_ADDRESS)
 
   // Cotización de envío Cainiao por destino: tarifa real + ETA, y aviso si el país no está cubierto.
+  // Incluimos también el estado/provincia para que el IVA se calcule por región (US/CA/BR).
   const shipCountry = selectedAddressId === 'NEW'
     ? newAddress.country
     : (addrList?.find((a) => a.id === selectedAddressId) as any)?.country
+  const shipRegion = selectedAddressId === 'NEW'
+    ? newAddress.state
+    : (addrList?.find((a) => a.id === selectedAddressId) as any)?.state
   const { data: shipQuote } = useQuery({
-    queryKey: ['ship-quote', shipCountry, lines.map((l) => `${l.productId}:${l.quantity}`).join(',')],
+    queryKey: ['ship-quote', shipCountry, shipRegion, lines.map((l) => `${l.productId}:${l.quantity}`).join(',')],
     queryFn: () => orders.shippingQuote(shipCountry!, lines.map((l) => ({
       productId: l.productId, variantId: l.variantId, quantity: l.quantity,
-    }))),
+    })), shipRegion || undefined),
     enabled: !!shipCountry && lines.length > 0,
   })
-  const shippingActive = shipQuote?.supported ? convert(shipQuote.amountUsdCents / 100, 'USD') : 0
+  // Tasa de IVA (bps) solo para la etiqueta "(X%)". Los importes (envío/IVA/total) los calcula y
+  // formatea el backend en el shipping-quote; aquí no se calcula nada.
+  const taxRateBps = shipQuote?.supported ? (shipQuote.taxRateBps ?? 0) : 0
   const [saveAsAddress, setSaveAsAddress] = useState(true)
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -346,10 +350,16 @@ export default function CheckoutPage() {
             <div className="flex justify-between"><span className="text-ink-500">{t('cart.subtotal')}</span><span>{subtotalText}</span></div>
             <div className="flex justify-between text-ink-500">
               <span>{t('order.detail.shipping')}{shipQuote?.supported && <span className="block text-[11px] opacity-70">{t('tracking.carrier_default')} · {shipQuote.etaMinDays}–{shipQuote.etaMaxDays} {t('checkout.ship_days')}</span>}</span>
-              <span>{!shipCountry ? '—' : shipQuote ? (shipQuote.supported ? format(shippingActive, activeCurrency) : t('checkout.ship_unsupported_short')) : '…'}</span>
+              <span>{!shipCountry ? '—' : shipQuote ? (shipQuote.supported ? shipQuote.shippingFormatted : t('checkout.ship_unsupported_short')) : '…'}</span>
             </div>
+            {taxRateBps > 0 && shipQuote?.supported && (
+              <div className="flex justify-between text-ink-500">
+                <span>{t('order.detail.tax')} ({taxRateBps / 100}%)</span>
+                <span>{shipQuote.taxFormatted}</span>
+              </div>
+            )}
             <div className="border-t border-ink-100 pt-2 mt-2 flex justify-between font-medium text-base">
-              <span>{t('checkout.total')}</span><span>{format(subtotalActive + shippingActive, activeCurrency)}</span>
+              <span>{t('checkout.total')}</span><span>{shipQuote?.supported ? shipQuote.totalFormatted : subtotalText}</span>
             </div>
           </div>
           {shipCountry && shipQuote && !shipQuote.supported && (

@@ -3,9 +3,9 @@
 // completo del perfil). País + Estado son dropdowns; cuando el país no tiene
 // estados curados, mostramos un input libre como fallback.
 
-import { useMemo } from 'react'
 import { AddressInput } from '../api/addresses'
-import { COUNTRIES, findCountry } from '../data/countries'
+import { COUNTRIES } from '../data/countries'
+import { RegionSelect } from './RegionSelect'
 import { useT } from '../store/locale'
 
 interface Props {
@@ -16,8 +16,6 @@ interface Props {
 
 export default function AddressFields({ value, onChange, compact }: Props) {
   const t = useT()
-  const country = useMemo(() => findCountry(value.country), [value.country])
-  const states = country?.states ?? []
 
   const set = <K extends keyof AddressInput>(k: K, v: AddressInput[K]) =>
     onChange({ ...value, [k]: v })
@@ -63,20 +61,14 @@ export default function AddressFields({ value, onChange, compact }: Props) {
              value={value.city}
              onChange={(e) => set('city', e.target.value)} />
 
-      {states.length > 0 ? (
-        <select className={selectCls}
-                value={value.state ?? ''}
-                onChange={(e) => set('state', e.target.value)}>
-          <option value="">{t('checkout.state')}</option>
-          {states.map((s) => (
-            <option key={s.code} value={s.code}>{s.name}</option>
-          ))}
-        </select>
-      ) : (
-        <input className={inputCls} placeholder={t('checkout.state')}
-               value={value.state ?? ''}
-               onChange={(e) => set('state', e.target.value)} />
-      )}
+      {/* Estado/provincia desde el seed del backend: dropdown si el país tiene regiones
+          (US/CA/BR y los que se añadan); texto libre si no. El código de región alimenta el IVA. */}
+      <RegionSelect country={value.country}
+                    value={value.state ?? ''}
+                    onChange={(v) => set('state', v)}
+                    selectClassName={selectCls}
+                    inputClassName={inputCls}
+                    placeholder={t('checkout.state')} />
 
       <input className={inputCls} placeholder={t('checkout.postal_code')}
              value={value.postalCode ?? ''}

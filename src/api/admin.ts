@@ -168,6 +168,16 @@ export interface CountryTaxRow {
   active: boolean
 }
 
+export interface CountryRegionRow {
+  countryCode: string
+  regionCode: string
+  regionName: string
+  rateBps?: number | null
+  ratePercent?: number | null
+  active: boolean
+  position: number
+}
+
 export interface CurrencyRow {
   code: string
   name: string
@@ -225,6 +235,11 @@ export const admin = {
   taxUpsert:      (country: string, body: { label: string; rateBps: number; active: boolean }) =>
                     api.put<CountryTaxRow>(`/admin/tax-rates/${country}`, body).then((r) => r.data),
   taxDelete:      (country: string) => api.delete(`/admin/tax-rates/${country}`).then((r) => r.status),
+  // Regiones (estado/provincia) por país — admin (incluye inactivas).
+  regions:        (country: string) => api.get<CountryRegionRow[]>('/admin/regions', { params: { country } }).then((r) => r.data),
+  regionUpsert:   (country: string, code: string, body: { name: string; rateBps?: number | null; active: boolean; position?: number }) =>
+                    api.put<CountryRegionRow>(`/admin/regions/${country}/${code}`, body).then((r) => r.data),
+  regionDelete:   (country: string, code: string) => api.delete(`/admin/regions/${country}/${code}`).then((r) => r.status),
 
   // ===== Divisas (tipos de cambio) =====
   currencyAll:    () => api.get<CurrencyRow[]>('/admin/currency/all').then((r) => r.data),

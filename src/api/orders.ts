@@ -5,6 +5,8 @@ export interface OrderListItem {
   orderNumber: string
   status: string
   totalCents: number
+  /** Total ya formateado por el backend en la moneda activa (igual que el detalle). El front lo pinta. */
+  totalFormatted?: string
   currency: string
   itemCount: number
   placedAt: string
@@ -112,7 +114,16 @@ export interface ShippingQuote {
   etaMinDays: number
   etaMaxDays: number
   zone?: string
+  /** Tasa de IVA del país de envío en puntos básicos (2100 = 21%); solo para la etiqueta "X%". */
+  taxRateBps?: number
+  /** Importes YA formateados por el backend en la moneda activa (el front solo los pinta). */
+  shippingFormatted?: string
+  taxFormatted?: string
+  totalFormatted?: string
 }
+
+/** Región (estado/provincia) de un país para el dropdown de direcciones. */
+export interface Region { code: string; name: string }
 
 export interface CartQuoteLine {
   productId: string; variantId?: string; unit: number; lineTotal: number
@@ -139,9 +150,12 @@ export const orders = {
     }).then((r) => r.data),
   tracking: (id: string) =>
     api.get<TrackingView>(`/me/orders/${id}/tracking`).then((r) => r.data),
-  // Cotización de envío Cainiao por destino (para el checkout).
-  shippingQuote: (country: string, items: CheckoutItem[]) =>
-    api.post<ShippingQuote>('/storefront/shipping/quote', { country, items }).then((r) => r.data),
+  // Cotización de envío Cainiao + IVA (según país/región) + total, ya formateado por el backend.
+  shippingQuote: (country: string, items: CheckoutItem[], region?: string) =>
+    api.post<ShippingQuote>('/storefront/shipping/quote', { country, region, items }).then((r) => r.data),
+  // Regiones (estado/provincia) de un país para el dropdown de direcciones/checkout.
+  regions: (country: string) =>
+    api.get<Region[]>('/storefront/shipping/regions', { params: { country } }).then((r) => r.data),
   // Países a los que se puede enviar (cobertura real de Cainiao) — para el banner de la home.
   shippingCountries: () =>
     api.get<ShippingCountry[]>('/storefront/shipping/countries').then((r) => r.data),

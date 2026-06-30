@@ -39,13 +39,19 @@ const COUNTRY_CCY: Record<string, string> = {
 function autodetect(): string {
   const stored = localStorage.getItem(STORAGE_KEY)
   if (stored) return stored
+  let ccy = 'USD'
   try {
     const lang = navigator.language || 'en-US'
     const cc = (lang.split('-')[1] || 'US').toUpperCase()
-    return COUNTRY_CCY[cc] || 'USD'
+    ccy = COUNTRY_CCY[cc] || 'USD'
   } catch {
-    return 'USD'
+    ccy = 'USD'
   }
+  // IMPORTANTE: persistimos la moneda detectada para que el cliente API (que lee esta MISMA clave
+  // de localStorage para la cabecera X-Currency) formatee los precios en la moneda correcta. Sin
+  // esto, un visitante nuevo veía el selector en su moneda pero los precios del backend en USD.
+  try { localStorage.setItem(STORAGE_KEY, ccy) } catch { /* ignore */ }
+  return ccy
 }
 
 export const useCurrencyStore = create<CurrencyState>((set, get) => ({
