@@ -12,6 +12,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { dialog } from '../../store/dialog'
 import { TrackingTimeline } from '../../components/TrackingTimeline'
+import { ImageLightbox } from '../../components/ImageLightbox'
 
 /** i18n laxo: fallback si la clave no está traducida aún. */
 function tt(t: (k: string) => string, key: string, fb: string): string {
@@ -254,15 +255,23 @@ export default function AdminOrderDetailPage() {
             {items.length > 0 ? items.map((it: any) => (
               <tr key={it.id} className="border-t border-ink-100">
                 <td className="px-4 py-2">
-                  <span>{it.title ?? it.sku ?? '—'}</span>
-                  {it.variantName && <span className="block text-[11px] text-ink-500">{it.variantName}</span>}
-                  {/* DROP: URL de la ficha original del producto, para que el operador la abra al procesar. */}
-                  {it.productSourceUrl && (
-                    <a href={it.productSourceUrl} target="_blank" rel="noopener noreferrer"
-                       className="ml-2 text-[11px] text-primary hover:underline inline-flex items-center gap-1">
-                      <FontAwesomeIcon icon={faArrowUpRightFromSquare} /> {tt(t, 'admin.orders.detail.view_product', 'Ver producto')}
-                    </a>
-                  )}
+                  <div className="flex items-start gap-3">
+                    {/* Miniatura de la variante/producto solicitado; click → verla en grande. */}
+                    <ImageLightbox src={it.imageUrl} alt={it.title ?? ''}
+                               className="w-10 h-10 rounded object-cover border border-ink-100 shrink-0"
+                               fallbackClassName="w-10 h-10 rounded shrink-0" />
+                    <div className="min-w-0">
+                      <span>{it.title ?? it.sku ?? '—'}</span>
+                      {it.variantName && <span className="block text-[11px] text-ink-500">{it.variantName}</span>}
+                      {/* DROP: URL de la ficha original del producto, para que el operador la abra al procesar. */}
+                      {it.productSourceUrl && (
+                        <a href={it.productSourceUrl} target="_blank" rel="noopener noreferrer"
+                           className="text-[11px] text-primary hover:underline inline-flex items-center gap-1">
+                          <FontAwesomeIcon icon={faArrowUpRightFromSquare} /> {tt(t, 'admin.orders.detail.view_product', 'Ver producto')}
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 </td>
                 <td className="px-4 py-2 font-mono text-[11px] text-ink-500">{it.sku || '—'}</td>
                 <td className="px-4 py-2 text-right">{it.qty}</td>

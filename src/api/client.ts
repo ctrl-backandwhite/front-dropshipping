@@ -1,5 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { authToken } from '../lib/authToken'
+// La localización de los mensajes de error es responsabilidad del BACKEND (fuente única: enum ErrorCode
+// resuelto por idioma con el header X-Lang). El front solo pinta `response.data.message` ya traducido.
 
 // Base del API. En local queda vacío → baseURL '/api' (mismo origen, nginx/vite proxy).
 // En Railway (SPA estático + API en otro dominio) se define VITE_API_BASE_URL al dominio
@@ -19,8 +21,8 @@ function readLocale(): string {
     const stored = localStorage.getItem('nx036-locale')
     if (stored) return stored
     const browser = navigator.language?.split('-')[0]
-    if (browser && ['en', 'es', 'pt', 'zh'].includes(browser)) return browser
-    return 'en'
+    if (browser && ['en', 'es', 'pt', 'zh', 'fr', 'de', 'it', 'nl'].includes(browser)) return browser
+    return 'es'
   } catch {
     return 'en'
   }
@@ -40,9 +42,11 @@ api.interceptors.request.use((cfg) => {
   const sameApi = !isAbsolute || (!!API_BASE && url.startsWith(API_BASE))
   const token = authToken.access
   if (token && sameApi) cfg.headers.set('Authorization', `Bearer ${token}`)
-  // Multi-currency + multi-language
+  // Multi-currency + multi-language (X-Lang = locale SELECCIONADA; el backend localiza errores con ella).
   cfg.headers.set('X-Currency', readCurrency())
-  cfg.headers.set('Accept-Language', readLocale())
+  const locale = readLocale()
+  cfg.headers.set('Accept-Language', locale)
+  cfg.headers.set('X-Lang', locale)
   return cfg
 })
 

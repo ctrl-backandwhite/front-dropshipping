@@ -48,6 +48,8 @@ export interface OrderView {
   orderNumber: string
   externalOrderId?: string
   status: string
+  /** Método de pago original (CARD/PAYPAL/USDT/WALLET) — decide a dónde ofrecer el reembolso al cancelar. */
+  paymentMethod?: string
   currency: string
   subtotal: string
   shipping: string
@@ -144,6 +146,10 @@ export const orders = {
   // traducido en lugar del titleSnapshot chino.
   detail: (id: string, lang = 'es') =>
     api.get<OrderView>(`/me/orders/${id}`, { params: { lang } }).then((r) => r.data),
+  // Cancelación por el cliente (solo si el pedido está PAGADO y aún no enviado a proveedor): reembolsa y cancela.
+  // refundToWallet=true → a la billetera (inmediato); false → al método original (tarjeta/PayPal, con sus tiempos).
+  cancel: (id: string, lang = 'es', refundToWallet = true) =>
+    api.post<OrderView>(`/me/orders/${id}/cancel`, null, { params: { lang, refundToWallet } }).then((r) => r.data),
   checkout: (body: CheckoutRequest, idem?: string) =>
     api.post<OrderView>('/me/orders/checkout', body, {
       headers: { 'Idempotency-Key': idem ?? randomKey() },

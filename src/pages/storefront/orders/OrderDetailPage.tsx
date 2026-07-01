@@ -1,7 +1,9 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { orders } from '../../../api/orders'
 import { api } from '../../../api/client'
+import { dialog } from '../../../store/dialog'
+import { apiErrorMessage } from '../../../lib/apiError'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCheck, faTruck, faBoxOpen, faMoneyBillTransfer, faHouseChimneyUser, faCircleCheck, faCircle,
@@ -53,6 +55,40 @@ export default function OrderDetailPage() {
     refetchInterval: 30_000,
   })
 
+  const qc = useQueryClient()
+  const cancelM = useMutation({
+    mutationFn: (refundToWallet: boolean) => orders.cancel(id, lang, refundToWallet),
+    onSuccess: (_data, refundToWallet) => {
+      qc.invalidateQueries({ queryKey: ['order', id] })
+      qc.invalidateQueries({ queryKey: ['orders'] })
+      qc.invalidateQueries({ queryKey: ['wallet'] })
+      // Wallet = inmediato; método original = puede tardar (según banco/PayPal).
+      dialog.alert({
+        message: t(refundToWallet ? 'order.detail.cancel_ok' : 'order.detail.cancel_ok_original'),
+        variant: 'success',
+      })
+    },
+    // Mensaje localizado por el CODE del backend (ORDER_NOT_CANCELLABLE / ORDER_NOT_FOUND / genérico).
+    onError: (err) => dialog.alert({ message: apiErrorMessage(err, t), variant: 'error' }),
+  })
+  async function onCancel() {
+    // Paso 1: confirmar la cancelación (aquí se aborta si el cliente no quiere).
+    if (!(await dialog.confirm({ message: t('order.detail.cancel_confirm'), variant: 'warning' }))) return
+    // Paso 2: solo si pagó con tarjeta/PayPal ofrecemos elegir destino del reembolso; el resto va a la wallet.
+    let refundToWallet = true
+    const pm = o?.paymentMethod
+    if (pm === 'CARD' || pm === 'PAYPAL') {
+      const methodLabel = pm === 'CARD' ? t('order.detail.refund_card') : 'PayPal'
+      refundToWallet = await dialog.confirm({
+        message: t('order.detail.refund_choice').replace('{method}', methodLabel),
+        confirmLabel: t('order.detail.refund_wallet'),
+        cancelLabel: t('order.detail.refund_original').replace('{method}', methodLabel),
+        variant: 'info',
+      })
+    }
+    cancelM.mutate(refundToWallet)
+  }
+
   if (isLoading) return <p className="text-sm text-ink-500">{t('order.detail.loading')}</p>
   if (!o) return <p className="text-sm">{t('order.detail.not_found')}</p>
 
@@ -102,6 +138,14 @@ export default function OrderDetailPage() {
           {!['PENDING', 'AWAITING_PAYMENT', 'CANCELLED'].includes(o.status) && (
             <button type="button" onClick={downloadInvoice}
                className="btn btn-outline text-sm">{t('order.detail.download_invoice')}</button>
+          )}
+          {/* El cliente puede cancelar (y recuperar su dinero) SOLO mientras el pedido está pagado y aún
+              no se ha enviado al proveedor. Una vez avanza, sería una devolución (proceso aparte). */}
+          {o.status === 'PAID' && (
+            <button type="button" onClick={onCancel} disabled={cancelM.isPending}
+               className="btn btn-outline text-sm hover:border-red-300 hover:text-red-700">
+              {t('order.detail.cancel')}
+            </button>
           )}
           <Link to="/orders" className="btn btn-outline text-sm">← {t('order.detail.back')}</Link>
         </div>
