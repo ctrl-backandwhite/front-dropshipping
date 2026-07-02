@@ -5,12 +5,14 @@ import AdminLayout from './layouts/AdminLayout'
 import HomePage from './pages/storefront/HomePage'
 import ProductListPage from './pages/storefront/ProductListPage'
 import ProductDetailPage from './pages/storefront/ProductDetailPage'
+import FavoritesPage from './pages/storefront/FavoritesPage'
 import PlansPage from './pages/storefront/PlansPage'
 import DevelopersPage from './pages/storefront/DevelopersPage'
 import ConnectStorePage from './pages/storefront/ConnectStorePage'
 import WalletPage from './pages/storefront/wallet/WalletPage'
 import RechargePage from './pages/storefront/wallet/RechargePage'
 import PaypalReturnPage from './pages/storefront/wallet/PaypalReturnPage'
+import RechargeReturnPage from './pages/storefront/wallet/RechargeReturnPage'
 import CartPage from './pages/storefront/cart/CartPage'
 import CheckoutPage from './pages/storefront/cart/CheckoutPage'
 import CheckoutReturnPage from './pages/storefront/cart/CheckoutReturnPage'
@@ -107,8 +109,10 @@ export default function App() {
         <Route path="cart" element={<CartPage />} />
         <Route path="checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
         <Route path="checkout/return" element={<ProtectedRoute><CheckoutReturnPage /></ProtectedRoute>} />
+        <Route path="favorites" element={<ProtectedRoute><FavoritesPage /></ProtectedRoute>} />
         <Route path="wallet" element={<ProtectedRoute><WalletPage /></ProtectedRoute>} />
         <Route path="wallet/recharge" element={<ProtectedRoute><RechargePage /></ProtectedRoute>} />
+        <Route path="wallet/recharge/return" element={<ProtectedRoute><RechargeReturnPage /></ProtectedRoute>} />
         <Route path="wallet/paypal-return" element={<ProtectedRoute><PaypalReturnPage /></ProtectedRoute>} />
         <Route path="orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
         <Route path="orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />

@@ -7,6 +7,7 @@ import { useCurrencyStore } from '../../store/currency'
 import { SearchInput } from '../../components/SearchInput'
 import { FilterBar, SelectFilter } from '../../components/FilterBar'
 import { Pagination } from './AdminOrdersPage'
+import { ScrollToTopButton } from '../../components/ScrollToTopButton'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faImage, faPlus, faCopy, faBoxArchive, faTrash, faPlay, faPause, faPen, faFileExport, faRotateRight } from '@fortawesome/free-solid-svg-icons'
 import { CatalogBulkTools } from '../../components/CatalogBulkTools'
@@ -316,6 +317,7 @@ export default function AdminCatalogPage() {
       </div>
 
       <Pagination page={page} pages={Math.max(1, data?.totalPages ?? 1)} onPage={setPage} />
+      <ScrollToTopButton />
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faTag, faCircleNodes, faCode, faSignInAlt, faGauge, faHouse,
   faRightFromBracket, faBars, faXmark,
-  faUser, faReceipt, faWallet, faLocationDot, faIdCard, faStore, faHandshake, faCartShopping,
+  faUser, faReceipt, faWallet, faLocationDot, faIdCard, faStore, faHandshake, faCartShopping, faHeart,
 } from '@fortawesome/free-solid-svg-icons'
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../store/auth'
@@ -35,6 +35,7 @@ export default function StorefrontLayout() {
   // End-user account options surfaced in the header for non-staff accounts.
   const accountItems = [
     { to: '/orders',    label: t('nav.orders'),       icon: faReceipt },
+    { to: '/favorites', label: t('nav.favorites'),    icon: faHeart },
     { to: '/wallet',    label: t('nav.wallet'),       icon: faWallet },
     { to: '/affiliate', label: t('platform.affiliate'), icon: faHandshake },
     { to: '/addresses', label: t('addresses.title'),  icon: faLocationDot },

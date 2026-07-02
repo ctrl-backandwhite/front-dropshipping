@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { wallet, RechargeResponse } from '../../../api/wallet'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
@@ -17,25 +17,18 @@ const METHOD_ICON: Record<Method, any> = { CARD: faCreditCard, PAYPAL: faPaypal,
 const METHOD_KEYS: { code: Method; labelKey: string; descKey: string }[] = [
   { code: 'CARD',   labelKey: 'recharge.method.card',   descKey: 'recharge.method.card_desc' },
   { code: 'PAYPAL', labelKey: 'recharge.method.paypal', descKey: 'recharge.method.paypal_desc' },
-  { code: 'USDT',   labelKey: 'recharge.method.usdt',   descKey: 'recharge.method.usdt_desc' },
+  // USDT oculto temporalmente (la maquinaria on-chain se conserva más abajo para reactivarlo).
+  // { code: 'USDT',   labelKey: 'recharge.method.usdt',   descKey: 'recharge.method.usdt_desc' },
 ]
-const PRESETS = [10, 25, 50, 100, 250, 500]
 const CHAINS = ['TRC20', 'ERC20', 'BEP20']
 
 export default function RechargePage() {
   const t = useT()
-  // DROP-535 (v2): selector multi-divisa real con conversión a USD canónico.
-  const format = useCurrencyStore((s) => s.format)
+  // La recarga trabaja SIEMPRE en la divisa activa de la web (la del selector superior). El importe se
+  // introduce en esa divisa y el BACKEND hace todos los cálculos (USD canónico + moneda de cobro).
   const displayCurrency = useCurrencyStore((s) => s.current)
-  const currencies = useCurrencyStore((s) => s.currencies)
-  const [inputCurrency, setInputCurrency] = useState<string>(displayCurrency || 'USD')
-  const [amountInput, setAmountInput] = useState<string>('50')
-  const usdAmount = (() => {
-    const v = parseFloat(amountInput) || 0
-    if (inputCurrency === 'USD') return v
-    const cur = currencies.find((c) => c.code === inputCurrency)
-    return v * (cur?.rateVsUsd ?? 1)
-  })()
+  const [amountInput, setAmountInput] = useState<string>('')
+  const displayAmount = parseFloat(amountInput) || 0
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [method, setMethod] = useState<Method>('CARD')
   const [chain, setChain] = useState<string>('TRC20')
@@ -44,10 +37,26 @@ export default function RechargePage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
 
-  // DROP-535: el endpoint sigue requiriendo USD, así que convertimos antes del POST.
+  // Presets redondeados por el backend en la divisa activa (el front solo los pinta).
+  const { data: options } = useQuery({
+    queryKey: ['recharge-options', displayCurrency],
+    queryFn: () => wallet.rechargeOptions(displayCurrency),
+  })
+
+  // El backend deriva el USD canónico y la moneda de cobro a partir del importe en divisa activa.
   const start = useMutation({
-    mutationFn: () => wallet.recharge({ method, amountUsdCents: Math.round(usdAmount * 100), cryptoChain: method === 'USDT' ? chain : undefined }),
-    onSuccess: (r) => { setResult(r); setStep(3); },
+    mutationFn: () => wallet.recharge({
+      method,
+      currencyDisplay: displayCurrency,
+      amountDisplay: displayAmount,
+      cryptoChain: method === 'USDT' ? chain : undefined,
+    }),
+    onSuccess: (r) => {
+      // Tarjeta y PayPal → Checkout hospedado: redirigimos a la pasarela segura. Al volver, la página
+      // /wallet/recharge/return confirma el cobro y acredita el saldo. USDT (u otros) muestran el paso 3.
+      if (r.approveUrl) { window.location.href = r.approveUrl; return }
+      setResult(r); setStep(3)
+    },
   })
 
   function next(e: FormEvent) { e.preventDefault(); setStep(2) }
@@ -111,39 +120,23 @@ export default function RechargePage() {
       {step === 2 && (
         <form onSubmit={(e) => { e.preventDefault(); start.mutate() }} className="space-y-4">
           <div className="card p-5">
-            {/* DROP-535 (v2): permitir al usuario elegir la divisa de entrada.
-                El wallet se acredita siempre en USD canónico — convertimos en
-                tiempo real lo que escribe. El selector arranca en la divisa
-                display del usuario (EUR/MXN/etc.) para que coincida con lo que
-                ve en el resto de la app. */}
-            {/* DROP-557: el label decía siempre "Importe en USD" aunque el
-                usuario seleccionara EUR/MXN/etc. — confunde porque el input
-                está en la divisa elegida. Refleja la divisa activa. */}
+            {/* La recarga se introduce en la divisa activa de la web; el importe y los presets vienen
+                redondeados y formateados del backend. El wallet se acredita en USD canónico. */}
             <label className="text-xs text-ink-500">
-              {t('recharge.amount.label').replace('USD', inputCurrency)}
+              {t('recharge.amount.label').replace('USD', displayCurrency)}
             </label>
             <div className="mt-1 flex items-center gap-2">
-              <select value={inputCurrency} onChange={(e) => setInputCurrency(e.target.value)}
-                      className="select select-bordered text-sm w-auto">
-                {['USD','EUR','GBP','BRL','MXN','JPY','CNY','CAD'].map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-              <input type="number" min={0.01} max={10000} step="0.01"
+              <span className="text-2xl font-medium text-ink-500">{options?.symbol ?? displayCurrency}</span>
+              <input type="number" min={0.01} step="0.01" placeholder="0"
                      value={amountInput} onChange={(e) => setAmountInput(e.target.value)}
                      className="input text-2xl flex-1 font-medium" />
             </div>
-            {inputCurrency !== 'USD' && amountInput && Number(amountInput) > 0 && (
-              <div className="text-[11px] text-ink-500 mt-1">
-                {t('recharge.charged_in_usd')}: <strong>{format(usdAmount, 'USD')}</strong>
-              </div>
-            )}
             <div className="mt-3 flex flex-wrap gap-2">
-              {PRESETS.map((p) => (
-                <button key={p} type="button" onClick={() => { setInputCurrency('USD'); setAmountInput(String(p)) }}
+              {(options?.presets ?? []).map((p) => (
+                <button key={p.amount} type="button" onClick={() => setAmountInput(String(p.amount))}
                   className={`px-3 py-1 rounded-full text-xs border ${
-                    inputCurrency === 'USD' && Number(amountInput) === p ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-ink-200 hover:bg-ink-50'
-                  }`}>${p}</button>
+                    displayAmount === p.amount ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-ink-200 hover:bg-ink-50'
+                  }`}>{p.formatted}</button>
               ))}
             </div>
           </div>
@@ -168,7 +161,7 @@ export default function RechargePage() {
 
           <div className="flex gap-2">
             <button type="button" onClick={back} className="btn btn-outline">{t('common.back')}</button>
-            <button type="submit" disabled={start.isPending || usdAmount < 1} className="btn btn-primary flex-1">
+            <button type="submit" disabled={start.isPending || displayAmount <= 0} className="btn btn-primary flex-1">
               {start.isPending ? t('common.processing') : `${t('recharge.continue_with')} ${method}`}
             </button>
           </div>
@@ -195,7 +188,9 @@ function PaymentResult({ result, method, onConfirmMock, confirming }: {
         </div>
         <div className="mt-1 text-xs text-ink-500">ID: <span className="font-mono">{result.paymentId.slice(0, 8)}…</span></div>
         <div className="mt-3 text-xl font-medium">
-          ${(result.amountUsdCents / 100).toFixed(2)} <span className="text-sm text-ink-500">USD</span>
+          {result.chargeFormatted
+            ? <>{result.chargeFormatted} <span className="text-sm text-ink-500">{result.chargeCurrency}</span></>
+            : <>${(result.amountUsdCents / 100).toFixed(2)} <span className="text-sm text-ink-500">USD</span></>}
         </div>
         <div className="text-xs text-ink-500 mt-1">vía {result.provider} · {t('common.status').toLowerCase()} {result.status}</div>
       </div>

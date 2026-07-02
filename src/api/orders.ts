@@ -4,6 +4,8 @@ export interface OrderListItem {
   id: string
   orderNumber: string
   status: string
+  /** Método de pago original (CARD/PAYPAL/USDT/WALLET) — para el botón de cancelar de la lista. */
+  paymentMethod?: string
   totalCents: number
   /** Total ya formateado por el backend en la moneda activa (igual que el detalle). El front lo pinta. */
   totalFormatted?: string

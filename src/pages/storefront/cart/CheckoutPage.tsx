@@ -371,15 +371,16 @@ export default function CheckoutPage() {
           {/* DROP-442: selector de método de pago */}
           <div className="space-y-2">
             <div className="text-xs font-medium opacity-70">{t('checkout.payment_method')}</div>
+            {/* Tarjeta y PayPal arriba (2 columnas); Wallet debajo ocupando todo el ancho.
+                USDT oculto temporalmente (la maquinaria on-chain sigue en el código para reactivarlo). */}
             <div className="grid grid-cols-2 gap-2 text-xs">
               {([
-                { id: 'CARD',   icon: faCreditCard, label: t('checkout.pay_card') },
-                { id: 'PAYPAL', icon: faPaypal,     label: 'PayPal' },
-                { id: 'WALLET', icon: faWallet,     label: t('checkout.pay_wallet') },
-                { id: 'USDT',   icon: faBitcoin,    label: 'USDT' },
+                { id: 'CARD',   icon: faCreditCard, label: t('checkout.pay_card'),   full: false },
+                { id: 'PAYPAL', icon: faPaypal,     label: 'PayPal',                 full: false },
+                { id: 'WALLET', icon: faWallet,     label: t('checkout.pay_wallet'), full: true },
               ] as const).map((m) => (
                 <button key={m.id} type="button" onClick={() => setPayMethod(m.id)}
-                        className={`border rounded-md p-2 flex items-center gap-1.5 ${payMethod === m.id ? 'border-primary bg-primary/10 text-primary-content' : 'border-base-300'}`}>
+                        className={`border rounded-md p-2 flex items-center gap-1.5 ${m.full ? 'col-span-2 justify-center' : ''} ${payMethod === m.id ? 'border-primary bg-primary/10 text-primary-content' : 'border-base-300'}`}>
                   <FontAwesomeIcon icon={m.icon} />
                   <span>{m.label}</span>
                 </button>

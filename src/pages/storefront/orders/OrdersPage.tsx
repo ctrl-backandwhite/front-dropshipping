@@ -5,12 +5,13 @@ import { orders } from '../../../api/orders'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faBoxOpen, faTruck, faCircleCheck, faCircleXmark, faHourglassHalf, faMoneyBillTransfer,
-  faRoute, faFilterCircleXmark,
+  faRoute, faFilterCircleXmark, faEye, faBan,
 } from '@fortawesome/free-solid-svg-icons'
 import { useT, useLocaleStore } from '../../../store/locale'
 import { useCurrencyStore } from '../../../store/currency'
 import { SearchInput } from '../../../components/SearchInput'
 import { FilterBar, SelectFilter } from '../../../components/FilterBar'
+import { useCancelOrder } from '../../../hooks/useCancelOrder'
 
 const STATUS_META: Record<string, { cls: string; icon: any }> = {
   PENDING:          { cls: 'bg-ink-100 text-ink-700',         icon: faHourglassHalf },
@@ -40,6 +41,8 @@ export default function OrdersPage() {
   const activeCurrency = useCurrencyStore((s) => s.current)
   const fmtTotal = (cents: number) => format(convert(cents / 100, 'USD'), activeCurrency)
   const { data, isLoading } = useQuery({ queryKey: ['orders'], queryFn: orders.list })
+  // Cancelación desde la lista (mismo flujo que el detalle): confirmar → elegir reembolso → cancelar.
+  const { cancelOrder } = useCancelOrder()
 
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<string | null>(null)
@@ -179,13 +182,26 @@ export default function OrdersPage() {
                       {o.placedAt ? new Date(o.placedAt).toLocaleString() : '—'}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-3">
+                      {/* Acciones solo-icono; el tooltip (daisyUI, esquinas redondeadas) describe cada una. */}
+                      <div className="flex items-center justify-end gap-1">
                         {SHIPPING_STATUSES.includes(o.status) && (
-                          <Link to={`/orders/${o.id}`} className="text-brand-700 hover:underline text-xs inline-flex items-center gap-1" title={t('orders.track')}>
-                            <FontAwesomeIcon icon={faRoute} /> {t('orders.track')}
+                          <Link to={`/orders/${o.id}`} data-tip={t('orders.track')} aria-label={t('orders.track')}
+                            className="tooltip tooltip-left inline-flex h-8 w-8 items-center justify-center rounded-lg text-brand-700 hover:bg-brand-50">
+                            <FontAwesomeIcon icon={faRoute} />
                           </Link>
                         )}
-                        <Link to={`/orders/${o.id}`} className="text-brand-700 hover:underline text-xs">{t('common.view')}</Link>
+                        {/* Cancelar (con reembolso) desde la lista, solo si está PAGADO y aún no enviado a proveedor. */}
+                        {o.status === 'PAID' && (
+                          <button type="button" onClick={() => cancelOrder(o.id, o.paymentMethod)}
+                            data-tip={t('order.detail.cancel')} aria-label={t('order.detail.cancel')}
+                            className="tooltip tooltip-left inline-flex h-8 w-8 items-center justify-center rounded-lg text-red-600 hover:bg-red-50">
+                            <FontAwesomeIcon icon={faBan} />
+                          </button>
+                        )}
+                        <Link to={`/orders/${o.id}`} data-tip={t('common.view')} aria-label={t('common.view')}
+                          className="tooltip tooltip-left inline-flex h-8 w-8 items-center justify-center rounded-lg text-brand-700 hover:bg-brand-50">
+                          <FontAwesomeIcon icon={faEye} />
+                        </Link>
                       </div>
                     </td>
                   </tr>
@@ -212,9 +228,17 @@ export default function OrdersPage() {
                 </div>
                 <div className="mt-1 flex items-center justify-between text-[11px] text-ink-500">
                   <span>{o.placedAt ? new Date(o.placedAt).toLocaleString() : '—'}</span>
-                  {SHIPPING_STATUSES.includes(o.status) && (
-                    <span className="text-brand-700 inline-flex items-center gap-1"><FontAwesomeIcon icon={faRoute} /> {t('orders.track')}</span>
-                  )}
+                  <span className="inline-flex items-center gap-3">
+                    {o.status === 'PAID' && (
+                      <button type="button" className="text-red-600"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); cancelOrder(o.id, o.paymentMethod) }}>
+                        {t('order.detail.cancel')}
+                      </button>
+                    )}
+                    {SHIPPING_STATUSES.includes(o.status) && (
+                      <span className="text-brand-700 inline-flex items-center gap-1"><FontAwesomeIcon icon={faRoute} /> {t('orders.track')}</span>
+                    )}
+                  </span>
                 </div>
               </Link>
             )

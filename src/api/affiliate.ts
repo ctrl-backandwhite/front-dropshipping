@@ -65,7 +65,9 @@ export const affiliate = {
 
 /** Newsletter (public) + email preferences (DROP email feature). */
 export const newsletter = {
-  subscribe: (email: string) => api.post('/storefront/newsletter/subscribe', { email }).then((r) => r.data),
+  subscribe: (email: string) =>
+    api.post<{ status: string; alreadySubscribed: boolean }>('/storefront/newsletter/subscribe', { email })
+      .then((r) => r.data),
   unsubscribe: (token: string) => api.post('/storefront/newsletter/unsubscribe', { token }).then((r) => r.data),
   getEmailPrefs: () => api.get<{ marketingOptOut: boolean }>('/me/email-preferences').then((r) => r.data),
   setEmailPrefs: (marketingOptOut: boolean) =>

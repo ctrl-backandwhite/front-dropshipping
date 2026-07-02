@@ -10,17 +10,20 @@ function NewsletterSignup() {
   const t = useT()
   const [email, setEmail] = useState('')
   const [done, setDone] = useState(false)
+  const [already, setAlready] = useState(false)
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim()) return
-    newsletter.subscribe(email.trim()).then(() => { setDone(true); setEmail('') }).catch(() => setDone(true))
+    newsletter.subscribe(email.trim())
+      .then((r) => { setAlready(!!r?.alreadySubscribed); setDone(true); setEmail('') })
+      .catch(() => setDone(true))
   }
   return (
     <nav className="max-w-xs">
       <h6 className="footer-title text-[11px]">{t('newsletter.footer.title')}</h6>
       <p className="text-[12px] opacity-70 mb-2">{t('newsletter.footer.pitch')}</p>
       {done ? (
-        <p className="text-[13px] text-success flex items-center gap-1"><FontAwesomeIcon icon={faCircleCheck} /> {t('newsletter.footer.done')}</p>
+        <p className={`text-[13px] flex items-center gap-1 ${already ? 'opacity-70' : 'text-success'}`}><FontAwesomeIcon icon={faCircleCheck} /> {t(already ? 'newsletter.footer.already' : 'newsletter.footer.done')}</p>
       ) : (
         <form onSubmit={submit} className="join">
           <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}

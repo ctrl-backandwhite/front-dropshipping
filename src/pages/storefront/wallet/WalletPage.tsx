@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { wallet } from '../../../api/wallet'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faPlus, faArrowDown, faArrowUp, faRotateLeft, faGears } from '@fortawesome/free-solid-svg-icons'
-import { useT } from '../../../store/locale'
+import { useT, useLocaleStore } from '../../../store/locale'
 
 const KIND_ICON: Record<string, any> = {
   DEPOSIT: faArrowDown, REFUND: faArrowDown, RELEASE: faArrowDown, ADJUSTMENT: faGears,
@@ -16,20 +16,23 @@ const KIND_COLOR: Record<string, string> = {
 
 export default function WalletPage() {
   const t = useT()
+  // El idioma va en la queryKey: el backend localiza las descripciones (X-Lang), así que al cambiar de
+  // idioma se refetch y se ven traducidas.
+  const lang = useLocaleStore((s) => s.locale)
   const { data: w } = useQuery({ queryKey: ['wallet'], queryFn: wallet.get })
-  const { data: tx } = useQuery({ queryKey: ['wallet-tx'], queryFn: () => wallet.transactions(0, 20) })
+  const { data: tx } = useQuery({ queryKey: ['wallet-tx', lang], queryFn: () => wallet.transactions(0, 20) })
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="card p-6 sm:p-8 bg-gradient-to-br from-brand-600 to-brand-800 text-white">
         <div className="text-xs uppercase tracking-wider text-brand-100 opacity-80">{t('wallet.balance')}</div>
         <div className="mt-2 text-4xl sm:text-5xl font-medium">
-          {w ? `${w.displaySymbol}${w.balanceDisplay.toFixed(2)}` : '—'}
+          {w ? (w.balanceFormatted ?? `${w.displaySymbol}${w.balanceDisplay.toFixed(2)}`) : '—'}
           <span className="ml-2 text-base font-light text-brand-100">{w?.displayCurrency}</span>
         </div>
         <div className="mt-1 text-sm text-brand-100/80">
-          {t('wallet.usd_canonical')}: <strong className="font-mono">${((w?.balanceUsdCents ?? 0) / 100).toFixed(2)}</strong>
-          {w && w.holdUsdCents > 0 && <span className="ml-3">· {t('wallet.hold')}: ${(w.holdUsdCents / 100).toFixed(2)}</span>}
+          {t('wallet.usd_canonical')}: <strong className="font-mono">{w?.balanceUsdFormatted ?? '—'}</strong>
+          {w && w.holdUsdCents > 0 && <span className="ml-3">· {t('wallet.hold')}: {w.holdUsdFormatted}</span>}
         </div>
         <div className="mt-6 flex gap-2 flex-wrap">
           <Link to="/wallet/recharge" className="btn btn-primary bg-white text-brand-700 hover:bg-brand-50">
@@ -61,9 +64,9 @@ export default function WalletPage() {
                   <span className="text-xs uppercase font-medium">{trx.kind}</span>
                 </td>
                 <td className={`px-4 py-2 font-mono ${trx.amountUsdCents >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                  {trx.amountUsdCents >= 0 ? '+' : ''}${(trx.amountUsdCents / 100).toFixed(2)}
+                  {trx.amountFormatted ?? `${trx.amountUsdCents >= 0 ? '+' : ''}$${(trx.amountUsdCents / 100).toFixed(2)}`}
                 </td>
-                <td className="px-4 py-2 font-mono">${(trx.balanceAfterCents / 100).toFixed(2)}</td>
+                <td className="px-4 py-2 font-mono">{trx.balanceAfterFormatted ?? `$${(trx.balanceAfterCents / 100).toFixed(2)}`}</td>
                 <td className="px-4 py-2 hidden sm:table-cell text-ink-500 text-xs">{trx.description}</td>
                 <td className="px-4 py-2 hidden md:table-cell text-ink-500 text-xs">{new Date(trx.createdAt).toLocaleString()}</td>
               </tr>

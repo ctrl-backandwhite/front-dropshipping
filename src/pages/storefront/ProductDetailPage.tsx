@@ -16,8 +16,10 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCartPlus, faBolt, faCircleCheck, faTruck, faRotateLeft, faGlobe, faCircleInfo,
   faIndustry, faStar, faShieldHalved, faMinus, faPlus, faShop, faChevronLeft, faChevronRight,
-  faPlay, faCircleExclamation, faArrowLeft,
+  faPlay, faCircleExclamation, faArrowLeft, faHeart as faHeartSolid,
 } from '@fortawesome/free-solid-svg-icons'
+import { faHeart as faHeartOutline } from '@fortawesome/free-regular-svg-icons'
+import { useFavorites } from '../../hooks/useFavorites'
 import { Breadcrumbs } from '../../components/Breadcrumbs'
 import { Reveal } from '../../components/Motion'
 import { SectionBoundary } from '../../components/ErrorBoundary'
@@ -52,6 +54,7 @@ export default function ProductDetailPage() {
   const { slug = '' } = useParams()
   const navigate = useNavigate()
   const locale = useLocaleStore((s) => s.locale)
+  const { enabled: favEnabled, isFavorite, toggle: toggleFavorite } = useFavorites()
   const { data: p, isLoading, isError, error } = useQuery({
     queryKey: ['product', slug, locale],
     queryFn: () => getProduct(slug, locale),
@@ -523,6 +526,14 @@ export default function ProductDetailPage() {
                 <FontAwesomeIcon icon={faBolt} /> {tt(t, 'product.order_now', 'Order now')}
               </button>
             </div>
+            {/* Añadir/quitar de favoritos (solo con sesión). */}
+            {favEnabled && (
+              <button type="button" onClick={() => toggleFavorite(product.id)}
+                className={`btn btn-outline btn-sm ${isFavorite(product.id) ? 'text-red-600 border-red-300 hover:bg-red-50' : ''}`}>
+                <FontAwesomeIcon icon={isFavorite(product.id) ? faHeartSolid : faHeartOutline} />
+                {isFavorite(product.id) ? t('product.remove_favorite') : t('product.add_favorite')}
+              </button>
+            )}
             {needsColor && (
               <p className="text-[12px] text-warning flex items-center gap-1.5">
                 <FontAwesomeIcon icon={faCircleInfo} />

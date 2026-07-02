@@ -1,11 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faStar, faFire, faTruckFast, faShield, faBolt, faCartPlus, faCircleCheck } from '@fortawesome/free-solid-svg-icons'
+import { faStar, faFire, faTruckFast, faShield, faBolt, faCartPlus, faCircleCheck, faHeart as faHeartSolid } from '@fortawesome/free-solid-svg-icons'
+import { faHeart as faHeartOutline } from '@fortawesome/free-regular-svg-icons'
 import type { ProductSummary } from '../api/catalog'
 import { getProduct } from '../api/catalog'
 import { useCartStore } from '../store/cart'
 import { useCurrencyStore } from '../store/currency'
 import { useT, useLocaleStore } from '../store/locale'
+import { useFavorites } from '../hooks/useFavorites'
 import { SafeImage } from './Placeholder'
 import { flyToCart } from '../lib/flyToCart'
 import { useState } from 'react'
@@ -16,6 +18,8 @@ export function ProductCard({ product }: { product: ProductSummary }) {
   const format = useCurrencyStore((s) => s.format)
   const cartAdd = useCartStore((s) => s.add)
   const locale = useLocaleStore((s) => s.locale)
+  const { enabled: favEnabled, isFavorite, toggle: toggleFavorite } = useFavorites()
+  const fav = isFavorite(product.id)
   // DROP-440: quick-add desde la tarjeta sin abrir el PDP.
   const [justAdded, setJustAdded] = useState(false)
   async function quickAdd(e: React.MouseEvent) {
@@ -104,9 +108,20 @@ export function ProductCard({ product }: { product: ProductSummary }) {
         </div>
 
         {(product as any).brandSelected && (
-          <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/95 text-brand-700 border border-brand-200 shadow-sm">
+          <span className="absolute top-2 right-11 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/95 text-brand-700 border border-brand-200 shadow-sm">
             <FontAwesomeIcon icon={faShield} className="text-[9px]" /> {t('product.badge.brand')}
           </span>
+        )}
+
+        {/* Añadir/quitar de favoritos (solo con sesión). No navega al PDP (preventDefault). */}
+        {favEnabled && (
+          <button type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(product.id) }}
+            aria-label={fav ? t('product.remove_favorite') : t('product.add_favorite')}
+            title={fav ? t('product.remove_favorite') : t('product.add_favorite')}
+            className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/90 hover:bg-white shadow-sm inline-flex items-center justify-center transition-transform hover:scale-110">
+            <FontAwesomeIcon icon={fav ? faHeartSolid : faHeartOutline} className={fav ? 'text-red-500' : 'text-ink-400'} />
+          </button>
         )}
       </div>
 

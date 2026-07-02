@@ -274,3 +274,14 @@ export async function createReview(productId: string, body: { rating: number; ti
   const { data } = await api.post<ReviewItem>(`/storefront/catalog/products/${productId}/reviews`, body)
   return data
 }
+
+/** Favoritos (wishlist) del usuario autenticado. */
+export const favorites = {
+  // IDs de favoritos (para marcar el corazón en el catálogo sin tocar el pipeline de precios).
+  ids: () => api.get<string[]>('/me/favorites/ids').then((r) => r.data),
+  add: (productId: string) => api.post(`/me/favorites/${productId}`).then((r) => r.data),
+  remove: (productId: string) => api.delete(`/me/favorites/${productId}`).then((r) => r.data),
+  // Página de favoritos: productos con precios (mismo pipeline que el catálogo).
+  list: (page = 0, size = 24, lang = 'es') =>
+    api.get<PageResponse<ProductSummary>>('/me/favorites', { params: { page, size, lang } }).then((r) => r.data),
+}

@@ -12,10 +12,13 @@ export function NewsletterSection() {
   const t = useT()
   const [email, setEmail] = useState('')
   const [done, setDone] = useState(false)
+  const [already, setAlready] = useState(false)
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim()) return
-    newsletter.subscribe(email.trim()).then(() => { setDone(true); setEmail('') }).catch(() => setDone(true))
+    newsletter.subscribe(email.trim())
+      .then((r) => { setAlready(!!r?.alreadySubscribed); setDone(true); setEmail('') })
+      .catch(() => setDone(true))
   }
   return (
     <section className="card p-8 lg:p-10 text-center bg-brand-50/60 border-brand-100">
@@ -26,8 +29,8 @@ export function NewsletterSection() {
         <h2 className="text-xl md:text-2xl font-medium tracking-tight">{t('newsletter.footer.title')}</h2>
         <p className="mt-2 text-ink-600">{t('newsletter.footer.pitch')}</p>
         {done ? (
-          <p className="mt-4 text-success flex items-center justify-center gap-2">
-            <FontAwesomeIcon icon={faCircleCheck} /> {t('newsletter.footer.done')}
+          <p className={`mt-4 flex items-center justify-center gap-2 ${already ? 'text-ink-500' : 'text-success'}`}>
+            <FontAwesomeIcon icon={faCircleCheck} /> {t(already ? 'newsletter.footer.already' : 'newsletter.footer.done')}
           </p>
         ) : (
           <form onSubmit={submit} className="mt-5 flex flex-col sm:flex-row gap-2 justify-center max-w-md mx-auto">
