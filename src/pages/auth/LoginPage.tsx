@@ -5,8 +5,7 @@ import {
   faCircleNodes, faSignInAlt, faEye, faEyeSlash,
   faTriangleExclamation, faShield, faBolt, faGlobe, faQuoteLeft, faArrowLeft,
 } from '@fortawesome/free-solid-svg-icons'
-import { dialog } from '../../store/dialog'
-import { faGoogle, faGithub, faApple } from '@fortawesome/free-brands-svg-icons'
+import { faGoogle, faGithub } from '@fortawesome/free-brands-svg-icons'
 import { useAuthStore } from '../../store/auth'
 import { API_BASE } from '../../api/client'
 import { useT } from '../../store/locale'
@@ -36,7 +35,14 @@ export default function LoginPage() {
   // ausencia se decide por rol tras autenticar (staff → /admin, usuario → /catalog).
   const from = location.state?.from
 
-  // Notices coming back from the Google OAuth2 flow (see GoogleOAuth2SuccessHandler).
+  // El `state` de react-router no sobrevive al redirect OAuth, así que guardamos el destino
+  // pretendido (p.ej. /checkout) para que el callback lo honre antes de saltar al proveedor.
+  const startOAuth = (provider: 'google' | 'github') => {
+    if (from && from.startsWith('/') && !from.startsWith('//')) sessionStorage.setItem('nx-login-from', from)
+    window.location.href = `${API_BASE}/oauth2/authorization/${provider}`
+  }
+
+  // Notices coming back from the social OAuth2 flow (see GoogleOAuth2SuccessHandler).
   const params = new URLSearchParams(location.search || '')
   const linkRequired = params.get('link') === 'required'
   const googleError = params.get('error')
@@ -153,15 +159,10 @@ export default function LoginPage() {
           )}
 
           {/* SSO row — DROP-247 */}
-          <div className="mt-6 grid grid-cols-3 gap-2">
-            <SsoButton provider="google" icon={faGoogle} onClick={() => {
-              // El `state` de react-router no sobrevive al redirect OAuth, así que
-              // guardamos el destino pretendido (p.ej. /checkout) para que el callback lo honre.
-              if (from && from.startsWith('/') && !from.startsWith('//')) sessionStorage.setItem('nx-login-from', from)
-              window.location.href = `${API_BASE}/oauth2/authorization/google`
-            }} />
-            <SsoButton provider="github" icon={faGithub} onClick={() => dialog.alert(t('login.sso_soon'))} />
-            <SsoButton provider="apple"  icon={faApple}  onClick={() => dialog.alert(t('login.sso_soon'))} />
+          {/* Apple queda oculto hasta implementarlo; Google y GitHub se reparten el ancho 50/50. */}
+          <div className="mt-6 grid grid-cols-2 gap-2">
+            <SsoButton provider="google" icon={faGoogle} onClick={() => startOAuth('google')} />
+            <SsoButton provider="github" icon={faGithub} onClick={() => startOAuth('github')} />
           </div>
           <div className="divider text-[11px] uppercase tracking-wider opacity-60 my-5">{t('login.or_email')}</div>
 
